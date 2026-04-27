@@ -90,12 +90,41 @@ def get_usage_text(user_id: int) -> str:
 # Activos por mercado
 # ---------------------------------------------------------------------------
 MARKETS = {
-    "col": {"name": "Colombia", "flag": "🇨🇴",
-            "assets": {"EC": "Ecopetrol", "CIB": "Bancolombia", "AVAL": "Grupo Aval"}},
-    "us": {"name": "EE.UU.", "flag": "🇺🇸",
-           "assets": {"AAPL": "Apple", "MSFT": "Microsoft", "NVDA": "Nvidia"}},
-    "crypto": {"name": "Cripto", "flag": "₿",
-               "assets": {"BTC-USD": "Bitcoin", "ETH-USD": "Ethereum", "SOL-USD": "Solana"}},
+    # --- Colombia (ADRs en NYSE) ---
+    "col": {"name": "Colombia", "flag": "\ud83c\udde8\ud83c\uddf4", "assets": {
+        "EC": "Ecopetrol", "CIB": "Bancolombia", "AVAL": "Grupo Aval",
+        "CRESUD": "Cresud (Agro)", "BHP": "BHP (Minera)",
+    }},
+    # --- EE.UU. por sector ---
+    "us_tech": {"name": "EE.UU. Tech", "flag": "\ud83c\uddfa\ud83c\uddf8\ud83d\udcbb", "assets": {
+        "AAPL": "Apple", "MSFT": "Microsoft", "NVDA": "Nvidia",
+        "GOOGL": "Google", "META": "Meta", "AMZN": "Amazon",
+    }},
+    "us_finance": {"name": "EE.UU. Finanzas", "flag": "\ud83c\uddfa\ud83c\uddf8\ud83c\udfe6", "assets": {
+        "JPM": "JP Morgan", "BAC": "Bank of America", "GS": "Goldman Sachs",
+        "V": "Visa", "MA": "Mastercard", "BLK": "BlackRock",
+    }},
+    "us_health": {"name": "EE.UU. Salud", "flag": "\ud83c\uddfa\ud83c\uddf8\ud83d\udc8a", "assets": {
+        "JNJ": "Johnson & Johnson", "UNH": "UnitedHealth", "PFE": "Pfizer",
+        "LLY": "Eli Lilly", "ABBV": "AbbVie", "MRK": "Merck",
+    }},
+    "us_energy": {"name": "EE.UU. Energia", "flag": "\ud83c\uddfa\ud83c\uddf8\u26a1", "assets": {
+        "XOM": "Exxon Mobil", "CVX": "Chevron", "COP": "ConocoPhillips",
+        "TSLA": "Tesla", "NEE": "NextEra Energy", "ENPH": "Enphase",
+    }},
+    "us_consumer": {"name": "EE.UU. Consumo", "flag": "\ud83c\uddfa\ud83c\uddf8\ud83d\udecd\ufe0f", "assets": {
+        "WMT": "Walmart", "KO": "Coca-Cola", "MCD": "McDonald's",
+        "NKE": "Nike", "DIS": "Disney", "PEP": "PepsiCo",
+    }},
+    # --- Cripto ---
+    "crypto_top": {"name": "Cripto Top", "flag": "\u20bf", "assets": {
+        "BTC-USD": "Bitcoin", "ETH-USD": "Ethereum", "SOL-USD": "Solana",
+        "BNB-USD": "BNB", "XRP-USD": "XRP",
+    }},
+    "crypto_alt": {"name": "Cripto Alt", "flag": "\ud83e\udea8", "assets": {
+        "ADA-USD": "Cardano", "AVAX-USD": "Avalanche", "DOT-USD": "Polkadot",
+        "LINK-USD": "Chainlink", "MATIC-USD": "Polygon",
+    }},
 }
 
 # ---------------------------------------------------------------------------
@@ -273,10 +302,29 @@ def generate_dashboard(results: list[dict], market: dict, commentary: str) -> Pa
 # ---------------------------------------------------------------------------
 def main_menu_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🇨🇴 Colombia", callback_data="mkt_col"),
-         InlineKeyboardButton("🇺🇸 EE.UU.", callback_data="mkt_us")],
-        [InlineKeyboardButton("₿ Cripto", callback_data="mkt_crypto")],
+        [InlineKeyboardButton("🇨🇴 Colombia", callback_data="mkt_col")],
+        [InlineKeyboardButton("🇺🇸 EE.UU.", callback_data="sub_us"),
+         InlineKeyboardButton("₿ Cripto", callback_data="sub_crypto")],
         [InlineKeyboardButton("📚 Como leer las senales", callback_data="learn")],
+    ])
+
+
+def us_submenu():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("💻 Tech", callback_data="mkt_us_tech"),
+         InlineKeyboardButton("🏦 Finanzas", callback_data="mkt_us_finance")],
+        [InlineKeyboardButton("💊 Salud", callback_data="mkt_us_health"),
+         InlineKeyboardButton("⚡ Energia", callback_data="mkt_us_energy")],
+        [InlineKeyboardButton("🛍️ Consumo", callback_data="mkt_us_consumer")],
+        [InlineKeyboardButton("◀️ Volver", callback_data="back")],
+    ])
+
+
+def crypto_submenu():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("₿ Top 5", callback_data="mkt_crypto_top"),
+         InlineKeyboardButton("🪨 Altcoins", callback_data="mkt_crypto_alt")],
+        [InlineKeyboardButton("◀️ Volver", callback_data="back")],
     ])
 
 
@@ -341,6 +389,21 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
     await query.answer()
     data = query.data
 
+    # Navegacion de sub-menus
+    if data == "back":
+        await query.edit_message_text("Selecciona un mercado:",
+            reply_markup=main_menu_keyboard())
+        return
+    if data == "sub_us":
+        await query.edit_message_text(
+            "🇺🇸 *EE.UU.* — Selecciona un sector:",
+            reply_markup=us_submenu(), parse_mode="Markdown")
+        return
+    if data == "sub_crypto":
+        await query.edit_message_text(
+            "₿ *Cripto* — Selecciona una categoria:",
+            reply_markup=crypto_submenu(), parse_mode="Markdown")
+        return
     if data == "learn":
         await ctx.bot.send_message(chat_id=query.message.chat_id,
             text=LEARN_TEXT, parse_mode="Markdown")
