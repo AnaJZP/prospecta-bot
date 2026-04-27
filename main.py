@@ -276,6 +276,7 @@ def main_menu_keyboard():
         [InlineKeyboardButton("🇨🇴 Colombia", callback_data="mkt_col"),
          InlineKeyboardButton("🇺🇸 EE.UU.", callback_data="mkt_us")],
         [InlineKeyboardButton("₿ Cripto", callback_data="mkt_crypto")],
+        [InlineKeyboardButton("📚 Como leer las senales", callback_data="learn")],
     ])
 
 
@@ -297,10 +298,56 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
+LEARN_TEXT = (
+    "📚 *Como leer las senales de ProspecTA*\n\n"
+    "ProspecTA combina 3 metodos de analisis tecnico profesional:\n\n"
+    "━━━━━━━━━━━━━━━━━━━━\n"
+    "☁️ *ICHIMOKU KINKO HYO*\n"
+    "_\"Equilibrio de un vistazo\"_\n\n"
+    "Imagina una nube en el grafico:\n"
+    "• Precio *arriba* de la nube → tendencia ALCISTA 🟢\n"
+    "• Precio *abajo* de la nube → tendencia BAJISTA 🔴\n"
+    "• Precio *dentro* de la nube → sin tendencia clara 🟡\n\n"
+    "Tambien mide dos lineas (Tenkan y Kijun):\n"
+    "• Tenkan cruza *arriba* de Kijun → senal de COMPRA\n"
+    "• Tenkan cruza *abajo* de Kijun → senal de VENTA\n\n"
+    "━━━━━━━━━━━━━━━━━━━━\n"
+    "📊 *ESTOCASTICO*\n"
+    "_Mide si el precio esta \"caro\" o \"barato\"_\n\n"
+    "Usa una escala de 0 a 100:\n"
+    "• K < 20 → *SOBREVENTA* (puede subir pronto) 🟢\n"
+    "• K > 80 → *SOBRECOMPRA* (puede bajar pronto) 🔴\n"
+    "• 20-80 → zona neutral 🟡\n\n"
+    "Es como un termometro del precio.\n\n"
+    "━━━━━━━━━━━━━━━━━━━━\n"
+    "🏗 *WYCKOFF*\n"
+    "_Analiza que hacen los \"grandes jugadores\"_\n\n"
+    "Fases del mercado:\n"
+    "• *ACUMULACION* → los grandes compran callados (oportunidad) 🟢\n"
+    "• *MARKUP* → el precio sube con fuerza 📈\n"
+    "• *DISTRIBUCION* → los grandes venden callados (peligro) 🔴\n"
+    "• *CAPITULACION* → venta masiva con panico 📉\n"
+    "• *RANGO* → mercado sin direccion clara\n\n"
+    "━━━━━━━━━━━━━━━━━━━━\n"
+    "🎯 *CONFIABILIDAD*\n\n"
+    "• *85-95%* → Los 3 indicadores coinciden → senal fuerte\n"
+    "• *60-75%* → 2 de 3 coinciden → senal moderada\n"
+    "• *50%* → indicadores mixtos → mejor esperar\n"
+)
+
+
 async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
     data = query.data
+
+    if data == "learn":
+        await ctx.bot.send_message(chat_id=query.message.chat_id,
+            text=LEARN_TEXT, parse_mode="Markdown")
+        await ctx.bot.send_message(chat_id=query.message.chat_id,
+            text="Analizar un mercado:", reply_markup=main_menu_keyboard())
+        return
+
     if not data.startswith("mkt_"):
         return
 
