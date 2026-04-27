@@ -15,10 +15,10 @@ load_dotenv()
 import yfinance as yf
 import pandas as pd
 from google import genai
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, LabeledPrice
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
-    MessageHandler, ContextTypes, filters,
+    MessageHandler, PreCheckoutQueryHandler, ContextTypes, filters,
 )
 
 logging.basicConfig(level=logging.INFO,
@@ -34,6 +34,7 @@ gemini = genai.Client(api_key=API_KEY)
 FREE_MONTHLY_LIMIT = 3
 SUB_DAILY_LIMIT = 3
 SUB_PRICE = 9.99
+STARS_PRICE = 250  # ~$9.99 en Telegram Stars
 
 # ---------------------------------------------------------------------------
 # Control de uso (en memoria - en produccion usar BD)
@@ -61,21 +62,19 @@ def check_usage(user_id: int) -> tuple[bool, str]:
         u["day"] = today
         u["daily"] = 0
 
-    # Demo mode: siempre permitir
-    return True, ""
+    # Suscriptor PRO
+    if u.get("sub"):
+        if u["daily"] >= SUB_DAILY_LIMIT:
+            return False, f"\u23f3 Limite diario alcanzado ({SUB_DAILY_LIMIT}/dia). Vuelve manana."
+        u["daily"] += 1
+        return True, ""
 
-    # # Logica real (activar cuando pagos esten listos):
-    # if u["sub"]:
-    #     if u["daily"] >= SUB_DAILY_LIMIT:
-    #         return False, f"Limite diario alcanzado ({SUB_DAILY_LIMIT}/dia). Vuelve manana."
-    #     u["daily"] += 1
-    #     return True, ""
-    # if u["free"] < FREE_MONTHLY_LIMIT:
-    #     u["free"] += 1
-    #     remaining = FREE_MONTHLY_LIMIT - u["free"]
-    #     return True, f"Consulta gratis {u['free']}/{FREE_MONTHLY_LIMIT} este mes."
-    # return False, ("Has usado tus 3 analisis gratis este mes.\n"
-    #                f"Suscribete por ${SUB_PRICE}/mes para 3 consultas diarias.")
+    # Plan gratuito
+    if u["free"] < FREE_MONTHLY_LIMIT:
+        u["free"] += 1
+        return True, ""
+
+    return False, ""
 
 
 def get_usage_text(user_id: int) -> str:
@@ -404,6 +403,9 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
             "₿ *Cripto* — Selecciona una categoria:",
             reply_markup=crypto_submenu(), parse_mode="Markdown")
         return
+    if data == "subscribe":
+        await send_subscription_invoice(query.message.chat_id, ctx)
+        return
     if data == "learn":
         await ctx.bot.send_message(chat_id=query.message.chat_id,
             text=LEARN_TEXT, parse_mode="Markdown")
@@ -421,7 +423,22 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
     uid = query.from_user.id
     allowed, msg = check_usage(uid)
     if not allowed:
-        await query.edit_message_text(msg, reply_markup=main_menu_keyboard())
+        await ctx.bot.send_message(
+            chat_id=query.message.chat_id,
+            text=(
+                "\ud83d\udeab *Limite alcanzado*\n\n"
+                f"Has usado tus {FREE_MONTHLY_LIMIT} analisis gratis este mes.\n\n"
+                f"\ud83d\udc8e *Plan PRO* \u2014 {STARS_PRICE} Stars (~${SUB_PRICE})\n"
+                "\u2022 3 consultas diarias\n"
+                "\u2022 Todos los mercados\n"
+                "\u2022 Dashboard con IA\n"
+            ),
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("\ud83d\udc8e Suscribirse PRO", callback_data="subscribe")],
+                [InlineKeyboardButton("\u25c0\ufe0f Volver", callback_data="back")],
+            ]),
+        )
         return
 
     mkt = MARKETS[market_key]
@@ -470,10 +487,57 @@ async def handle_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         reply_markup=main_menu_keyboard())
 
 
+# ---------------------------------------------------------------------------
+# Pagos con Telegram Stars
+# ---------------------------------------------------------------------------
+async def send_subscription_invoice(chat_id: int, ctx: ContextTypes.DEFAULT_TYPE):
+    """Envia factura de suscripcion via Telegram Stars."""
+    await ctx.bot.send_invoice(
+        chat_id=chat_id,
+        title="ProspecTA PRO - Suscripcion Mensual",
+        description=(
+            "3 analisis diarios de mercado con IA.\n"
+            "Colombia, EE.UU. (5 sectores) y Cripto.\n"
+            "Wyckoff + Ichimoku + Estocastico."
+        ),
+        payload="prospecta_pro_monthly",
+        provider_token="",  # Telegram Stars
+        currency="XTR",
+        prices=[LabeledPrice(label="ProspecTA PRO", amount=STARS_PRICE)],
+    )
+
+
+async def pre_checkout_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """Aprueba el pago."""
+    await update.pre_checkout_query.answer(ok=True)
+
+
+async def successful_payment_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """Activa la suscripcion tras pago exitoso."""
+    uid = update.effective_user.id
+    today = date.today().isoformat()
+    if uid not in user_usage:
+        user_usage[uid] = {"month": today[:7], "free": 0, "sub": True,
+                           "day": today, "daily": 0}
+    else:
+        user_usage[uid]["sub"] = True
+        user_usage[uid]["daily"] = 0
+    logger.info("Pago exitoso de usuario %s", uid)
+    await update.message.reply_text(
+        "\u2705 *Suscripcion PRO activada!*\n\n"
+        "Ya puedes hacer hasta 3 analisis diarios.\n"
+        "Selecciona un mercado:",
+        reply_markup=main_menu_keyboard(),
+        parse_mode="Markdown",
+    )
+
+
 def main() -> None:
     logger.info("Iniciando ProspecTA")
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(PreCheckoutQueryHandler(pre_checkout_handler))
+    app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_handler))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     logger.info("Bot listo.")
