@@ -6,7 +6,7 @@ Interfaz de Telegram con botones inline. Freemium: 3 gratis/mes, $9.99/mes.
 Autor: Ana Lorena Jimenez Preciado
 XIX Congreso Internacional de Prospectiva (Cali, Colombia)
 """
-import os, re, json, html, logging, tempfile, asyncio
+import os, re, json, html, logging, tempfile, asyncio, traceback
 from datetime import datetime, date
 from pathlib import Path
 from dotenv import load_dotenv
@@ -403,22 +403,20 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
     except Exception as e:
         logger.warning("Error answering callback: %s", e)
 
-    async def _send_new(text, markup=None):
-        """Siempre enviar mensaje nuevo (evita fallos de edit_message_text)."""
-        try:
-            await ctx.bot.send_message(chat_id=chat_id, text=text, reply_markup=markup)
-        except Exception as e:
-            logger.error("send_message fallo: %s", e)
-
     # Navegacion de sub-menus
     if data == "back":
-        await _send_new("Selecciona un mercado:", markup=main_menu_keyboard())
+        await ctx.bot.send_message(chat_id=chat_id, text="Selecciona un mercado:",
+                                   reply_markup=main_menu_keyboard())
         return
     if data == "sub_us":
-        await _send_new("🇺🇸 EE.UU. — Selecciona un sector:", markup=us_submenu())
+        await ctx.bot.send_message(chat_id=chat_id,
+            text="\U0001f1fa\U0001f1f8 EE.UU. \u2014 Selecciona un sector:",
+            reply_markup=us_submenu())
         return
     if data == "sub_crypto":
-        await _send_new("₿ Cripto — Selecciona una categoria:", markup=crypto_submenu())
+        await ctx.bot.send_message(chat_id=chat_id,
+            text="\u20bf Cripto \u2014 Selecciona una categoria:",
+            reply_markup=crypto_submenu())
         return
     if data == "subscribe":
         await send_subscription_invoice(chat_id, ctx)
@@ -429,7 +427,8 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
         except Exception:
             await ctx.bot.send_message(chat_id=chat_id,
                 text=LEARN_TEXT.replace("*", "").replace("_", ""))
-        await _send_new("Analizar un mercado:", markup=main_menu_keyboard())
+        await ctx.bot.send_message(chat_id=chat_id, text="Analizar un mercado:",
+                                   reply_markup=main_menu_keyboard())
         return
 
     if not data.startswith("mkt_"):
@@ -443,16 +442,19 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
     uid = query.from_user.id
     allowed, msg = check_usage(uid)
     if not allowed:
-        await _send_new(
-            f"🚫 Limite alcanzado\n\n"
-            f"Has usado tus {FREE_MONTHLY_LIMIT} analisis gratis este mes.\n\n"
-            f"💎 Plan PRO — {STARS_PRICE} Stars (~${SUB_PRICE})\n"
-            "• 3 consultas diarias\n"
-            "• Todos los mercados\n"
-            "• Dashboard con IA",
-            markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("💎 Suscribirse PRO", callback_data="subscribe")],
-                [InlineKeyboardButton("◀️ Volver", callback_data="back")],
+        await ctx.bot.send_message(
+            chat_id=chat_id,
+            text=(
+                f"\U0001f6ab Limite alcanzado\n\n"
+                f"Has usado tus {FREE_MONTHLY_LIMIT} analisis gratis este mes.\n\n"
+                f"\U0001f48e Plan PRO \u2014 {STARS_PRICE} Stars (~${SUB_PRICE})\n"
+                "\u2022 3 consultas diarias\n"
+                "\u2022 Todos los mercados\n"
+                "\u2022 Dashboard con IA"
+            ),
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("\U0001f48e Suscribirse PRO", callback_data="subscribe")],
+                [InlineKeyboardButton("\u25c0\ufe0f Volver", callback_data="back")],
             ]),
         )
         return
@@ -460,54 +462,80 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
     mkt = MARKETS[market_key]
     logger.info("Iniciando analisis de mercado: %s", market_key)
 
-    # Enviar mensaje de "analizando"
-    await _send_new(
-        f"⏳ Analizando {mkt['flag']} {mkt['name']}...\n"
-        "Calculando Ichimoku, Estocastico y Wyckoff...\n"
-        "Esto puede tardar unos segundos."
-    )
-
     try:
-        results = await asyncio.to_thread(analyze_market, market_key)
+        # Mensaje de espera
+        await ctx.bot.send_message(
+            chat_id=chat_id,
+            text=f"\u23f3 Analizando {mkt['flag']} {mkt['name']}...\n"
+                 "Calculando Ichimoku, Estocastico y Wyckoff...\n"
+                 "Esto puede tardar 10-30 segundos."
+        )
+
+        # Analisis con timeout de 90 segundos
+        try:
+            results = await asyncio.wait_for(
+                asyncio.to_thread(analyze_market, market_key),
+                timeout=90
+            )
+        except asyncio.TimeoutError:
+            logger.error("Timeout analizando mercado %s", market_key)
+            await ctx.bot.send_message(chat_id=chat_id,
+                text="\u23f0 El analisis tardo demasiado. Intente de nuevo.",
+                reply_markup=main_menu_keyboard())
+            return
+        except Exception as e:
+            logger.error("Error en analyze_market: %s", e, exc_info=True)
+            await ctx.bot.send_message(chat_id=chat_id,
+                text=f"\u274c Error obteniendo datos: {type(e).__name__}",
+                reply_markup=main_menu_keyboard())
+            return
+
+        if not results:
+            await ctx.bot.send_message(chat_id=chat_id,
+                text="No se pudieron obtener datos. Intente mas tarde.",
+                reply_markup=main_menu_keyboard())
+            return
+
+        logger.info("Analisis completado: %d activos", len(results))
+
+        # Resumen en Telegram — texto plano
+        lines = [f"\U0001f4ca {mkt['flag']} {mkt['name']} \u2014 Senales\n"]
+        for r in results:
+            emoji = {"COMPRA": "\U0001f7e2", "VENTA": "\U0001f534"}.get(r["signal"], "\U0001f7e1")
+            lines.append(
+                f"{emoji} {r['name']} ({r['symbol']}) \u2014 {r['signal']} {r['confidence']}%\n"
+                f"   \U0001f4b0 ${r['price']:,.2f} \u2192 \U0001f3af ${r['target']:,.2f} ({r['target_pct']:+.1f}%)\n"
+                f"   \U0001f6d1 Stop: ${r['stop_loss']:,.2f} | Wyckoff: {r['wyckoff']}\n")
+        usage = get_usage_text(uid)
+        lines.append(f"\n{usage}\nGenerando dashboard con IA...")
+
+        await ctx.bot.send_message(chat_id=chat_id, text="\n".join(lines))
+
+        # Dashboard
+        try:
+            commentary = await get_ai_commentary(results, mkt["name"])
+            html_path = generate_dashboard(results, mkt, commentary)
+            await ctx.bot.send_document(chat_id=chat_id,
+                document=html_path.open("rb"),
+                filename=f"ProspecTA_{market_key}_{datetime.now():%Y%m%d_%H%M}.html",
+                caption="Abra en su navegador para ver graficas interactivas.")
+            html_path.unlink(missing_ok=True)
+        except Exception as e:
+            logger.error("Error dashboard: %s", e, exc_info=True)
+            await ctx.bot.send_message(chat_id=chat_id,
+                text="\u26a0\ufe0f Dashboard no disponible, pero las senales arriba son validas.")
+
+        await ctx.bot.send_message(chat_id=chat_id,
+            text="Analizar otro mercado:", reply_markup=main_menu_keyboard())
+
     except Exception as e:
-        logger.error("Error en analyze_market: %s", e, exc_info=True)
-        await _send_new("❌ Error al obtener datos del mercado. Intente mas tarde.",
-                        markup=main_menu_keyboard())
-        return
-
-    if not results:
-        await _send_new("No se pudieron obtener datos. Intente mas tarde.",
-                        markup=main_menu_keyboard())
-        return
-
-    logger.info("Analisis completado: %d activos", len(results))
-
-    # Resumen en Telegram — texto plano, sin parse_mode
-    lines = [f"📊 {mkt['flag']} {mkt['name']} — Senales\n"]
-    for r in results:
-        emoji = {"COMPRA": "🟢", "VENTA": "🔴"}.get(r["signal"], "🟡")
-        lines.append(
-            f"{emoji} {r['name']} ({r['symbol']}) — {r['signal']} {r['confidence']}%\n"
-            f"   💰 ${r['price']:,.2f} → 🎯 ${r['target']:,.2f} ({r['target_pct']:+.1f}%)\n"
-            f"   🛑 Stop: ${r['stop_loss']:,.2f} | Wyckoff: {r['wyckoff']}\n")
-    usage = get_usage_text(uid)
-    lines.append(f"\n{usage}\nGenerando dashboard con IA...")
-
-    await _send_new("\n".join(lines))
-
-    try:
-        commentary = await get_ai_commentary(results, mkt["name"])
-        html_path = generate_dashboard(results, mkt, commentary)
-        await ctx.bot.send_document(chat_id=chat_id,
-            document=html_path.open("rb"),
-            filename=f"ProspecTA_{market_key}_{datetime.now():%Y%m%d_%H%M}.html",
-            caption="Abra en su navegador para ver graficas interactivas.")
-        html_path.unlink(missing_ok=True)
-    except Exception as e:
-        logger.error("Error dashboard: %s", e, exc_info=True)
-        await _send_new("⚠️ Dashboard no disponible, pero las senales arriba son validas.")
-
-    await _send_new("Analizar otro mercado:", markup=main_menu_keyboard())
+        logger.error("Error CRITICO en button_handler: %s", e, exc_info=True)
+        try:
+            await ctx.bot.send_message(chat_id=chat_id,
+                text=f"\u274c Error inesperado: {type(e).__name__}. Intente /start de nuevo.",
+                reply_markup=main_menu_keyboard())
+        except Exception:
+            pass
 
 
 async def handle_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
@@ -573,11 +601,40 @@ async def cmd_reset(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
+async def cmd_status(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    """Diagnostico: prueba yfinance y Gemini."""
+    uid = update.effective_user.id
+    lines = ["\U0001f527 Diagnostico ProspecTA\n"]
+
+    # Test yfinance
+    try:
+        import yfinance as yf
+        df = yf.Ticker("AAPL").history(period="5d", interval="1d")
+        lines.append(f"\u2705 Yahoo Finance: {len(df)} filas")
+    except Exception as e:
+        lines.append(f"\u274c Yahoo Finance: {e}")
+
+    # Test Gemini
+    try:
+        resp = await gemini.aio.models.generate_content(
+            model=FLASH_MODEL, contents="Responde solo: OK")
+        lines.append(f"\u2705 Gemini: {resp.text.strip()[:50]}")
+    except Exception as e:
+        lines.append(f"\u274c Gemini: {e}")
+
+    # Usage
+    lines.append(f"\n{get_usage_text(uid)}")
+    lines.append(f"Usuarios en memoria: {len(user_usage)}")
+
+    await update.message.reply_text("\n".join(lines))
+
+
 def main() -> None:
     logger.info("Iniciando ProspecTA")
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("reset", cmd_reset))
+    app.add_handler(CommandHandler("status", cmd_status))
     app.add_handler(PreCheckoutQueryHandler(pre_checkout_handler))
     app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_handler))
     app.add_handler(CallbackQueryHandler(button_handler))

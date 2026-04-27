@@ -64,7 +64,8 @@ section.center-v{display:flex!important;flex-direction:column;justify-content:ce
 <br>
 <p style="font-size:0.85em;color:#f0f0f0">
 <strong>Ana Lorena Jiménez Preciado</strong><br>
-<span class="dim">Dra. en Ciencias Económicas · Investigadora SNI · Profesora-Investigadora IPN</span><br>
+<span class="dim">Dra. en Ciencias Económicas · Investigadora SNI</span><br>
+<span class="dim">Profesora-Investigadora, Escuela Superior de Economía — Instituto Politécnico Nacional</span><br>
 <span class="dim">Científica de Datos — BBVA México</span>
 </p>
 <p class="dim" style="margin-top:12px">XIX Congreso Internacional de Prospectiva — Cali, Colombia</p>
@@ -106,19 +107,20 @@ tan buenas como un analista que cobra <span class="highlight">$5,000</span>?</p>
 <p class="fragment">Cada token cuesta dinero. ProspecTA usa ~4,000 tokens = <span class="green">$0.001</span></p>
 </section>
 
-<!-- SLIDE 6: EMBEDDINGS -->
+<!-- SLIDE 6: EMBEDDINGS Y ESPACIOS VECTORIALES -->
 <section>
-<h2>📍 Embeddings: un GPS para palabras</h2>
+<h2>📍 Embeddings: las máquinas no leen palabras</h2>
 <br>
-<p>Las palabras similares viven en el mismo <span class="highlight">barrio</span>:</p>
+<p>La IA convierte cada palabra en un <span class="highlight">vector de coordenadas</span>:</p>
 <br>
-<pre><code>  ☕ CAFÉ  ←→  🍫 CACAO  ←→  🍯 PANELA    (barrio agro)
-
-  ₿ BITCOIN  ←→  Ξ ETHEREUM               (barrio cripto)
-
-  🛢 ECOPETROL  ←→  ⛽ PETRÓLEO             (barrio energía)</code></pre>
+<pre style="font-size:0.7em"><code>  "café"     → [0.82, -0.15,  0.47, ..., 0.31]   ∈ ℝ⁷⁶⁸
+  "cacao"    → [0.79, -0.12,  0.51, ..., 0.29]   ∈ ℝ⁷⁶⁸
+  "Bitcoin"  → [-0.41, 0.88, -0.23, ..., 0.65]   ∈ ℝ⁷⁶⁸</code></pre>
 <br>
-<p class="fragment">La IA <strong>sabe</strong> que "café" y "cacao" son vecinos,<br>pero "café" y "Bitcoin" viven lejos.</p>
+<p class="fragment">Palabras similares = vectores <span class="highlight">cercanos</span> en el espacio:</p>
+<pre class="fragment" style="text-align:center;font-size:0.8em;border:none;background:rgba(212,160,23,0.05)"><code>similitud(café, cacao) = cos(θ) ≈ <span class="green">0.94</span>  ← ¡vecinos!
+similitud(café, Bitcoin) = cos(θ) ≈ <span class="red">0.12</span>  ← lejos</code></pre>
+<p class="fragment dim">768 dimensiones. Las máquinas ven coordenadas, no letras.</p>
 </section>
 
 <!-- SLIDE 7: PROBABILIDAD -->
@@ -183,44 +185,61 @@ tan buenas como un analista que cobra <span class="highlight">$5,000</span>?</p>
 
 <!-- SLIDE 10: ICHIMOKU -->
 <section>
-<h2>☁️ Ichimoku — La Nube</h2>
+<h2>☁️ Ichimoku Kinko Hyo — "Equilibrio de un vistazo"</h2>
 <br>
-<p>Imaginen una <span class="highlight">nube</span> en el gráfico de precios:</p>
+<p>5 líneas que forman una <span class="highlight">nube</span> de soporte/resistencia:</p>
+<div style="font-size:0.8em;margin:15px 0">
+<p>• <span class="highlight">Tenkan-sen</span> (9 períodos) — momentum de corto plazo</p>
+<p>• <span class="highlight">Kijun-sen</span> (26 períodos) — tendencia de mediano plazo</p>
+<p>• <span class="highlight">Senkou Span A y B</span> — forman la nube (Kumo)</p>
+</div>
+<p><span class="green">▲ Precio ARRIBA de la nube → ALCISTA</span></p>
+<p><span class="red">▼ Precio ABAJO de la nube → BAJISTA</span></p>
+<p><span style="color:#f1c40f">● Cruce Tenkan > Kijun → señal de COMPRA</span></p>
 <br>
-<p><span class="green">▲ Precio ARRIBA de la nube → tendencia ALCISTA</span></p>
-<p><span class="red">▼ Precio ABAJO de la nube → tendencia BAJISTA</span></p>
-<p><span style="color:#f1c40f">● Precio DENTRO → sin tendencia clara</span></p>
-<br>
-<p class="dim">Creado por Goichi Hosoda, un periodista japonés, en 1930.</p>
+<p class="dim">Creado por Goichi Hosoda tras 30 años de investigación (1930-1960). Probado en mercados japoneses.</p>
 </section>
 
 <!-- SLIDE 11: ESTOCASTICO -->
 <section>
-<h2>📊 Estocástico — El Termómetro</h2>
+<h2>📊 Oscilador Estocástico — ¿Caro o barato?</h2>
 <br>
-<p>Escala de 0 a 100:</p>
-<br>
-<div style="font-size:1.2em">
-<p><span class="green">K &lt; 20 → SOBREVENTA</span> (puede subir pronto) 🟢</p>
-<p><span class="red">K &gt; 80 → SOBRECOMPRA</span> (puede bajar pronto) 🔴</p>
-<p><span style="color:#f1c40f">20-80 → zona neutral</span> 🟡</p>
+<p>Mide dónde está el precio respecto a su rango reciente (14 días):</p>
+<pre style="text-align:center;font-size:0.85em;border:none;background:rgba(212,160,23,0.05)"><code>%K = (Precio - Mínimo₁₄) / (Máximo₁₄ - Mínimo₁₄) × 100</code></pre>
+<div style="font-size:1.1em;margin:15px 0">
+<p><span class="green">K &lt; 20 → SOBREVENTA</span> — oportunidad de compra 🟢</p>
+<p><span class="red">K &gt; 80 → SOBRECOMPRA</span> — posible corrección 🔴</p>
+<p><span style="color:#f1c40f">20-80 → zona neutral</span> — esperar confirmación 🟡</p>
 </div>
-<br>
-<p class="dim">Como un termómetro que mide la "temperatura" del precio.</p>
+<p class="fragment">Se complementa con <span class="highlight">%D</span> (media móvil de %K): cuando %K cruza %D → señal de entrada.</p>
+<p class="dim">Desarrollado por George Lane en los años 1950. Uno de los osciladores más usados en el mundo.</p>
 </section>
 
 <!-- SLIDE 12: WYCKOFF -->
 <section>
-<h2>🏗 Wyckoff — Los Grandes Jugadores</h2>
+<h2>🏗 Método Wyckoff — Seguir al "dinero inteligente"</h2>
 <br>
-<p>Las 4 fases del mercado:</p>
+<p>El mercado se mueve en <span class="highlight">4 fases cíclicas</span>:</p>
 <br>
-<p><span class="pill pill-green">ACUMULACIÓN</span> Los grandes compran callados</p>
-<p><span class="pill pill-green">MARKUP</span> El precio sube con fuerza 📈</p>
-<p><span class="pill pill-red">DISTRIBUCIÓN</span> Los grandes venden callados</p>
-<p><span class="pill pill-red">CAPITULACIÓN</span> Venta masiva con pánico 📉</p>
-<br>
-<p class="dim">Richard Wyckoff lo desarrolló observando a JP Morgan en los años 1930.</p>
+<div class="grid-2" style="font-size:0.85em">
+<div class="card">
+<p><span class="pill pill-green">ACUMULACIÓN</span></p>
+<p>Los institucionales compran callados. Volumen bajo, precio lateral. <strong>Oportunidad.</strong></p>
+</div>
+<div class="card">
+<p><span class="pill pill-green">MARKUP</span></p>
+<p>El precio sube con fuerza. Volumen crece. El público entra. 📈</p>
+</div>
+<div class="card">
+<p><span class="pill pill-red">DISTRIBUCIÓN</span></p>
+<p>Los institucionales venden al público. Volumen alto, precio lateral. <strong>Peligro.</strong></p>
+</div>
+<div class="card">
+<p><span class="pill pill-red">CAPITULACIÓN</span></p>
+<p>Venta masiva con pánico. El ciclo se reinicia. 📉</p>
+</div>
+</div>
+<p class="dim" style="margin-top:12px">Richard Wyckoff (1873-1934). Observó a JP Morgan, Livermore y los grandes operadores de Wall Street.</p>
 </section>
 
 <!-- SLIDE 13: DEMO EN VIVO -->
@@ -250,6 +269,37 @@ tan buenas como un analista que cobra <span class="highlight">$5,000</span>?</p>
 <pre style="text-align:center;font-size:1.1em;border:none;background:rgba(212,160,23,0.05)"><code>π(n) = n·P − F − n·C(90)  →  π(10) ≈ <span class="green">$94/mes (94%)</span>  |  π(100) ≈ <span class="green">$985/mes</span></code></pre>
 </div>
 <p class="dim" style="margin-top:15px">Donde P = precio suscripción, C(q) = costo variable, F = costo fijo</p>
+</section>
+
+<!-- SLIDE 14b: MONETIZACION CON TELEGRAM STARS -->
+<section>
+<h2>⭐ Monetización: Telegram Stars</h2>
+<br>
+<p>¿Cómo cobra un bot de Telegram sin pasarela bancaria?</p>
+<br>
+<div class="grid-2" style="font-size:0.82em">
+<div class="card">
+<h3>💳 Pasarela tradicional</h3>
+<p>• Stripe, PayPal, MercadoPago</p>
+<p>• Requiere cuenta empresarial</p>
+<p>• KYC, contratos, impuestos</p>
+<p>• Comisión: <span class="red">2.9% + $0.30</span></p>
+<p>• Meses de setup</p>
+</div>
+<div class="card" style="border-color:#f1c40f">
+<h3>⭐ Telegram Stars</h3>
+<p>• <strong>Moneda digital nativa</strong> de Telegram</p>
+<p>• Sin cuenta bancaria</p>
+<p>• Un solo archivo de configuración</p>
+<p>• Comisión Telegram: <span class="highlight">~30%</span></p>
+<p>• <span class="green">Activo en minutos</span></p>
+</div>
+</div>
+<br>
+<div class="fragment" style="text-align:center">
+<p style="font-size:0.85em">El usuario paga <span class="highlight">250 Stars ≈ $9.99</span> → Telegram retiene ~30% → Desarrollador recibe <span class="green">~$7.00</span></p>
+<p class="dim">Aún con la comisión, el margen neto supera el 90% gracias al costo operativo de $0.001 por consulta.</p>
+</div>
 </section>
 
 <!-- SLIDE 15: STACK -->
