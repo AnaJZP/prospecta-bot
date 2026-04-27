@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProspecTA - Senales de Trading</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0d1b3e;--surface:#132044;--surface2:#1a2d5a;--border:rgba(212,160,23,0.12);--text:#f0f0f0;--dim:#9aa5c0;--green:#2ecc71;--green-bg:rgba(46,204,113,0.12);--red:#e74c3c;--red-bg:rgba(231,76,60,0.12);--gold:#d4a017;--gold-bg:rgba(212,160,23,0.12);--blue:#3498db;--yellow:#f1c40f}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+.container{max-width:900px;margin:0 auto;padding:20px 16px}
+.header{text-align:center;padding:36px 20px 28px;background:linear-gradient(135deg,#0d1b3e,#1a237e 50%,#0d1b3e);border-radius:20px;margin-bottom:24px;border:1px solid var(--border);position:relative;overflow:hidden}
+.header::after{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--yellow),var(--gold),var(--yellow))}
+.header .brand{color:var(--gold);font-size:1.6rem;font-weight:800;letter-spacing:1px;margin-bottom:4px}
+.header .brand span{color:var(--yellow)}
+.header h1{font-size:1.1rem;font-weight:500;color:var(--dim);margin-bottom:4px}
+.header .sub{color:var(--dim);font-size:0.78rem;opacity:0.7}
+.header .date{color:var(--dim);font-size:0.7rem;margin-top:8px;opacity:0.5}
+.signal-card{background:var(--surface);border-radius:16px;padding:22px;margin-bottom:18px;border:1px solid var(--border);transition:transform 0.2s}
+.signal-card:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,0.3)}
+.signal-card.buy{border-left:4px solid var(--green)}
+.signal-card.sell{border-left:4px solid var(--red)}
+.signal-card.hold{border-left:4px solid var(--gold)}
+.signal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.signal-badge{font-size:0.72rem;font-weight:700;padding:5px 14px;border-radius:20px;text-transform:uppercase;letter-spacing:1px}
+.signal-badge.buy{background:var(--green-bg);color:var(--green)}
+.signal-badge.sell{background:var(--red-bg);color:var(--red)}
+.signal-badge.hold{background:var(--gold-bg);color:var(--gold)}
+.confidence{font-size:1.4rem;font-weight:800;background:linear-gradient(135deg,var(--gold),var(--yellow));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.signal-card h3{font-size:1.15rem;font-weight:700;margin-bottom:10px}
+.symbol{color:var(--dim);font-weight:400;font-size:0.82rem}
+.chart-mini{margin-bottom:14px;padding:4px 0;border-radius:8px;background:rgba(0,0,0,0.15)}
+.price-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;padding:14px;background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid rgba(255,255,255,0.04)}
+@media(max-width:600px){.price-row{grid-template-columns:1fr}}
+.price-item{text-align:center}
+.price-item .label{display:block;font-size:0.6rem;color:var(--dim);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:3px}
+.price-item .val{font-size:1.05rem;font-weight:700}
+.price-item .target{color:var(--green)}
+.price-item .stop{color:var(--red)}
+.indicators{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+@media(max-width:600px){.indicators{grid-template-columns:1fr}}
+.ind{background:var(--surface2);padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.03)}
+.ind-name{display:block;font-size:0.58rem;color:var(--gold);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:3px;font-weight:600}
+.ind-val{font-size:0.8rem;font-weight:500}
+.section{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:18px}
+.section h2{font-size:1rem;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.section-content{color:var(--dim);font-size:0.85rem}
+.section-content p{margin-bottom:10px}
+.section-content strong{color:var(--text)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.badge-ai{display:inline-block;font-size:0.58rem;padding:3px 10px;border-radius:20px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px;background:var(--gold-bg);color:var(--gold)}
+.footer{text-align:center;padding:24px 16px;color:var(--dim);font-size:0.62rem;opacity:0.5;border-top:1px solid var(--border);margin-top:8px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="brand">Prospec<span>TA</span></div>
+    <h1>Senales de Trading {{MARKET_NAME}}</h1>
+    <div class="sub">Wyckoff &bull; Ichimoku &bull; Estocastico</div>
+    <div class="date">{{DATE}} &mdash; Datos via Yahoo Finance &bull; IA via Gemini Flash</div>
+  </div>
+  {{SIGNAL_CARDS}}
+  <div class="section">
+    <span class="badge-ai">Analisis IA &bull; Gemini Flash</span>
+    <h2><span class="dot" style="background:var(--gold)"></span> Comentario Estrategico</h2>
+    <div class="section-content">{{AI_COMMENTARY}}</div>
+  </div>
+  <div class="footer">
+    <strong>Aviso:</strong> Senales generadas con indicadores tecnicos reales. No constituyen asesoria de inversion.
+    <br>ProspecTA &mdash; XIX Congreso Internacional de Prospectiva &mdash; Cali, Colombia
+  </div>
+</div>
+<script>
+const chartData = {{CHART_DATA_JSON}};
+Object.entries(chartData).forEach(([id, prices]) => {
+  const el = document.getElementById(id);
+  if (!el || !prices.length) return;
+  const isUp = prices[prices.length-1] >= prices[0];
+  const color = isUp ? '#2ecc71' : '#e74c3c';
+  new Chart(el, {
+    type: 'line',
+    data: {
+      labels: prices.map((_,i) => i),
+      datasets: [{
+        data: prices,
+        borderColor: color,
+        backgroundColor: (isUp ? 'rgba(46,204,113,0.08)' : 'rgba(231,76,60,0.08)'),
+        borderWidth: 2, fill: true, pointRadius: 0, tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: c => '$' + c.parsed.y.toLocaleString() } } },
+      scales: {
+        x: { display: false },
+        y: { display: false }
+      }
+    }
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.env
+*.log
+debug_*.txt
+dashboard_ejemplo.html
+gen_sample.py
+report_template.tex
+presentacion_*.tex
+*.aux
+*.out
+*.pdf
