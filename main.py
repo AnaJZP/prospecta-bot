@@ -42,6 +42,14 @@ STARS_PRICE = 250  # ~$9.99 en Telegram Stars
 user_usage: dict[int, dict] = {}
 
 
+def reset_user(user_id: int) -> None:
+    """Reinicia los intentos gratuitos de un usuario."""
+    today = date.today().isoformat()
+    user_usage[user_id] = {"month": today[:7], "free": 0, "sub": False,
+                            "day": today, "daily": 0}
+    logger.info("Intentos reiniciados para usuario %s", user_id)
+
+
 def check_usage(user_id: int) -> tuple[bool, str]:
     """Verifica si el usuario puede hacer una consulta."""
     today = date.today().isoformat()
@@ -385,37 +393,56 @@ LEARN_TEXT = (
 
 async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
-    await query.answer()
     data = query.data
-
     chat_id = query.message.chat_id
 
-    async def _reply(text, markup=None, pm=None):
+    # Responder callback inmediatamente para evitar "loading" infinito
+    try:
+        await query.answer()
+    except Exception as e:
+        logger.warning("Error answering callback: %s", e)
+
+    async def _safe_edit(text, markup=None):
+        """Editar el mensaje actual, sin parse_mode para evitar fallos."""
         try:
-            await query.edit_message_text(text, reply_markup=markup, parse_mode=pm)
-        except Exception:
-            await ctx.bot.send_message(chat_id=chat_id, text=text, reply_markup=markup, parse_mode=pm)
+            await query.edit_message_text(text, reply_markup=markup)
+        except Exception as e:
+            logger.warning("edit_message_text fallo: %s", e)
+            try:
+                await ctx.bot.send_message(chat_id=chat_id, text=text, reply_markup=markup)
+            except Exception as e2:
+                logger.error("send_message tambien fallo: %s", e2)
+
+    async def _safe_send(text, markup=None, parse_mode=None):
+        """Enviar mensaje nuevo con fallback sin parse_mode."""
+        try:
+            await ctx.bot.send_message(chat_id=chat_id, text=text,
+                                       reply_markup=markup, parse_mode=parse_mode)
+        except Exception as e:
+            logger.warning("send con parse_mode=%s fallo: %s — reintentando sin formato", parse_mode, e)
+            try:
+                # Quitar asteriscos/underscores y reintentar sin parse_mode
+                clean = text.replace("*", "").replace("_", "")
+                await ctx.bot.send_message(chat_id=chat_id, text=clean, reply_markup=markup)
+            except Exception as e2:
+                logger.error("send sin formato tambien fallo: %s", e2)
 
     # Navegacion de sub-menus
     if data == "back":
-        await _reply("Selecciona un mercado:", markup=main_menu_keyboard())
+        await _safe_edit("Selecciona un mercado:", markup=main_menu_keyboard())
         return
     if data == "sub_us":
-        await _reply("🇺🇸 *EE.UU.* \u2014 Selecciona un sector:",
-                     markup=us_submenu(), pm="Markdown")
+        await _safe_edit("🇺🇸 EE.UU. — Selecciona un sector:", markup=us_submenu())
         return
     if data == "sub_crypto":
-        await _reply("\u20bf *Cripto* \u2014 Selecciona una categoria:",
-                     markup=crypto_submenu(), pm="Markdown")
+        await _safe_edit("₿ Cripto — Selecciona una categoria:", markup=crypto_submenu())
         return
     if data == "subscribe":
         await send_subscription_invoice(chat_id, ctx)
         return
     if data == "learn":
-        await ctx.bot.send_message(chat_id=chat_id,
-            text=LEARN_TEXT, parse_mode="Markdown")
-        await ctx.bot.send_message(chat_id=chat_id,
-            text="Analizar un mercado:", reply_markup=main_menu_keyboard())
+        await _safe_send(LEARN_TEXT, parse_mode="Markdown")
+        await _safe_send("Analizar un mercado:", markup=main_menu_keyboard())
         return
 
     if not data.startswith("mkt_"):
@@ -428,48 +455,55 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
     uid = query.from_user.id
     allowed, msg = check_usage(uid)
     if not allowed:
-        await ctx.bot.send_message(
-            chat_id=query.message.chat_id,
-            text=(
-                "\ud83d\udeab *Limite alcanzado*\n\n"
-                f"Has usado tus {FREE_MONTHLY_LIMIT} analisis gratis este mes.\n\n"
-                f"\ud83d\udc8e *Plan PRO* \u2014 {STARS_PRICE} Stars (~${SUB_PRICE})\n"
-                "\u2022 3 consultas diarias\n"
-                "\u2022 Todos los mercados\n"
-                "\u2022 Dashboard con IA\n"
-            ),
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("\ud83d\udc8e Suscribirse PRO", callback_data="subscribe")],
-                [InlineKeyboardButton("\u25c0\ufe0f Volver", callback_data="back")],
+        await _safe_send(
+            f"🚫 Limite alcanzado\n\n"
+            f"Has usado tus {FREE_MONTHLY_LIMIT} analisis gratis este mes.\n\n"
+            f"💎 Plan PRO — {STARS_PRICE} Stars (~${SUB_PRICE})\n"
+            "• 3 consultas diarias\n"
+            "• Todos los mercados\n"
+            "• Dashboard con IA",
+            markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("💎 Suscribirse PRO", callback_data="subscribe")],
+                [InlineKeyboardButton("◀️ Volver", callback_data="back")],
             ]),
         )
         return
 
     mkt = MARKETS[market_key]
-    await _reply(f"\u23f3 Analizando {mkt['flag']} {mkt['name']}...\n"
-                 "Calculando Ichimoku, Estocastico y Wyckoff...")
 
-    results = await asyncio.to_thread(analyze_market, market_key)
-    if not results:
-        await ctx.bot.send_message(chat_id=chat_id,
-            text="No se pudieron obtener datos. Intente mas tarde.",
-            reply_markup=main_menu_keyboard())
+    # Enviar mensaje de "analizando" como mensaje nuevo (no editar)
+    wait_msg = await ctx.bot.send_message(
+        chat_id=chat_id,
+        text=f"⏳ Analizando {mkt['flag']} {mkt['name']}...\n"
+             "Calculando Ichimoku, Estocastico y Wyckoff...\n"
+             "Esto puede tardar unos segundos."
+    )
+
+    try:
+        results = await asyncio.to_thread(analyze_market, market_key)
+    except Exception as e:
+        logger.error("Error en analyze_market: %s", e, exc_info=True)
+        await _safe_send("❌ Error al obtener datos del mercado. Intente mas tarde.",
+                         markup=main_menu_keyboard())
         return
 
-    # Resumen en Telegram (ordenado por fuerza)
-    lines = [f"📊 *{mkt['flag']} {mkt['name']}* — Senales\n"]
+    if not results:
+        await _safe_send("No se pudieron obtener datos. Intente mas tarde.",
+                         markup=main_menu_keyboard())
+        return
+
+    # Resumen en Telegram — usar texto plano para evitar errores de formato
+    lines = [f"📊 {mkt['flag']} {mkt['name']} — Senales\n"]
     for r in results:
         emoji = {"COMPRA": "🟢", "VENTA": "🔴"}.get(r["signal"], "🟡")
         lines.append(
-            f"{emoji} *{r['name']}* ({r['symbol']}) — {r['confidence']}%\n"
+            f"{emoji} {r['name']} ({r['symbol']}) — {r['signal']} {r['confidence']}%\n"
             f"   💰 ${r['price']:,.2f} → 🎯 ${r['target']:,.2f} ({r['target_pct']:+.1f}%)\n"
             f"   🛑 Stop: ${r['stop_loss']:,.2f} | Wyckoff: {r['wyckoff']}\n")
     usage = get_usage_text(uid)
-    lines.append(f"_{usage}_\n_Generando dashboard..._")
+    lines.append(f"\n{usage}\nGenerando dashboard con IA...")
 
-    await ctx.bot.send_message(chat_id=chat_id,
-        text="\n".join(lines), parse_mode="Markdown")
+    await _safe_send("\n".join(lines))
 
     try:
         commentary = await get_ai_commentary(results, mkt["name"])
@@ -481,9 +515,9 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
         html_path.unlink(missing_ok=True)
     except Exception as e:
         logger.error("Error dashboard: %s", e, exc_info=True)
+        await _safe_send("⚠️ Dashboard no disponible, pero las senales arriba son validas.")
 
-    await ctx.bot.send_message(chat_id=chat_id,
-        text="Analizar otro mercado:", reply_markup=main_menu_keyboard())
+    await _safe_send("Analizar otro mercado:", markup=main_menu_keyboard())
 
 
 async def handle_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
@@ -536,10 +570,24 @@ async def successful_payment_handler(update: Update, ctx: ContextTypes.DEFAULT_T
     )
 
 
+async def cmd_reset(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    """Reinicia los intentos del usuario que envia el comando."""
+    uid = update.effective_user.id
+    reset_user(uid)
+    usage = get_usage_text(uid)
+    await update.message.reply_text(
+        "✅ Tus intentos han sido reiniciados.\n\n"
+        f"{usage}\n\n"
+        "Selecciona un mercado:",
+        reply_markup=main_menu_keyboard(),
+    )
+
+
 def main() -> None:
     logger.info("Iniciando ProspecTA")
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("reset", cmd_reset))
     app.add_handler(PreCheckoutQueryHandler(pre_checkout_handler))
     app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_handler))
     app.add_handler(CallbackQueryHandler(button_handler))

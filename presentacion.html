@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Micro-SaaS y Agentes de IA</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/black.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--r-background-color:#0d1b3e;--r-main-font:'Inter',sans-serif;--r-heading-font:'Inter',sans-serif;--r-main-color:#f0f0f0;--r-heading-color:#d4a017;--r-link-color:#f1c40f;--r-selection-background-color:#d4a017}
+.reveal{font-size:32px}
+.reveal h1{font-size:2.2em;font-weight:900;background:linear-gradient(135deg,#d4a017,#f1c40f);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1}
+.reveal h2{font-size:1.5em;font-weight:700;color:#d4a017}
+.reveal h3{font-size:1.1em;font-weight:600;color:#f1c40f}
+.reveal blockquote{background:rgba(212,160,23,0.08);border-left:4px solid #d4a017;padding:20px 30px;margin:20px 0;font-style:italic;font-size:0.95em;border-radius:0 12px 12px 0}
+.reveal blockquote p{margin:0}
+.reveal .big-quote{font-size:1.6em;text-align:center;font-weight:700;line-height:1.3;color:#f0f0f0}
+.reveal .big-quote span{color:#d4a017}
+.reveal table{margin:20px auto;border-collapse:collapse;font-size:0.75em}
+.reveal table th{background:#1a2d5a;color:#d4a017;padding:12px 20px;font-weight:600;text-align:left}
+.reveal table td{padding:10px 20px;border-bottom:1px solid rgba(255,255,255,0.06)}
+.reveal .emoji-big{font-size:3em;margin-bottom:10px}
+.reveal .highlight{color:#d4a017;font-weight:700}
+.reveal .green{color:#2ecc71}
+.reveal .red{color:#e74c3c}
+.reveal .dim{color:#7b859a;font-size:0.7em}
+.reveal code{background:rgba(212,160,23,0.1);padding:3px 8px;border-radius:6px;font-size:0.85em;color:#f1c40f}
+.reveal pre{background:#111827;border:1px solid rgba(212,160,23,0.15);border-radius:12px;padding:20px;font-size:0.6em;text-align:left}
+.reveal pre code{background:none;padding:0;color:#e4e8f1}
+.reveal .flow-box{display:inline-block;background:#1a2d5a;border:1px solid rgba(212,160,23,0.2);border-radius:10px;padding:12px 20px;margin:5px;font-size:0.75em}
+.reveal .flow-arrow{color:#d4a017;font-size:1.5em;margin:0 5px}
+.reveal .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:30px;text-align:left;font-size:0.8em}
+.reveal .card{background:#132044;border:1px solid rgba(212,160,23,0.12);border-radius:14px;padding:24px}
+.reveal .card h3{margin-top:0}
+.reveal .pill{display:inline-block;padding:6px 16px;border-radius:20px;font-size:0.65em;font-weight:600;margin:3px}
+.reveal .pill-green{background:rgba(46,204,113,0.15);color:#2ecc71}
+.reveal .pill-red{background:rgba(231,76,60,0.15);color:#e74c3c}
+.reveal .pill-gold{background:rgba(212,160,23,0.15);color:#d4a017}
+.slide-bg-flag{background:linear-gradient(180deg,#f1c40f 0%,#f1c40f 25%,#1a237e 25%,#1a237e 75%,#e74c3c 75%,#e74c3c 100%)!important}
+.reveal .progress{color:#d4a017;height:4px}
+.reveal .controls button{color:#d4a017}
+section.center-v{display:flex!important;flex-direction:column;justify-content:center;align-items:center;height:100%}
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- SLIDE 1: GANCHO -->
+<section class="center-v">
+<p class="big-quote">"Cali es Cali<br>y lo demás es <span>________</span>."</p>
+<br>
+<p style="font-size:1.1em;color:#7b859a">
+&nbsp;
+</p>
+</section>
+
+<!-- SLIDE 2: TITULO -->
+<section class="center-v">
+<h1>Micro-SaaS y Agentes de IA</h1>
+<br>
+<h3>¿Por qué están cambiando las reglas del juego?</h3>
+<br>
+<p style="font-size:0.85em;color:#f0f0f0">
+<strong>Ana Lorena Jiménez Preciado</strong><br>
+<span class="dim">Dra. en Ciencias Económicas · Investigadora SNI · Profesora-Investigadora IPN</span><br>
+<span class="dim">Científica de Datos — BBVA México</span>
+</p>
+<p class="dim" style="margin-top:12px">XIX Congreso Internacional de Prospectiva — Cali, Colombia</p>
+</section>
+
+<!-- SLIDE 3: LA PREGUNTA -->
+<section class="center-v">
+<p class="emoji-big">💡</p>
+<blockquote>
+<p>¿Y si un bot de <span class="highlight">$5 al mes</span> pudiera generar señales de trading<br>
+tan buenas como un analista que cobra <span class="highlight">$5,000</span>?</p>
+</blockquote>
+</section>
+
+<!-- SLIDE 4: QUE ES UN LLM -->
+<section>
+<h2>🧠 ¿Qué es un modelo de lenguaje?</h2>
+<br>
+<p>Imaginen un amigo que se ha leído <span class="highlight">TODO internet</span>.</p>
+<br>
+<p class="fragment">Le dices: <em>"Cali es Cali y lo demás es..."</em></p>
+<p class="fragment" style="font-size:2em;color:#d4a017;font-weight:800">→ "loma"</p>
+<br>
+<p class="fragment dim">Así funciona un LLM: predice la <strong>siguiente palabra más probable</strong>.</p>
+</section>
+
+<!-- SLIDE 5: TOKENS -->
+<section>
+<h2>🔤 ¿Qué son los Tokens?</h2>
+<br>
+<p>La IA no lee palabras. Lee <span class="highlight">pedacitos</span>:</p>
+<br>
+<table>
+<tr><th>Tú escribes</th><th>La IA ve</th><th>Tokens</th></tr>
+<tr><td>"Ecopetrol sube"</td><td><code>Eco</code> <code>petrol</code> <code> sube</code></td><td>3</td></tr>
+<tr><td>"Café colombiano"</td><td><code>Caf</code> <code>é</code> <code> colomb</code> <code>iano</code></td><td>4</td></tr>
+</table>
+<br>
+<p class="fragment">Cada token cuesta dinero. ProspecTA usa ~4,000 tokens = <span class="green">$0.001</span></p>
+</section>
+
+<!-- SLIDE 6: EMBEDDINGS -->
+<section>
+<h2>📍 Embeddings: un GPS para palabras</h2>
+<br>
+<p>Las palabras similares viven en el mismo <span class="highlight">barrio</span>:</p>
+<br>
+<pre><code>  ☕ CAFÉ  ←→  🍫 CACAO  ←→  🍯 PANELA    (barrio agro)
+
+  ₿ BITCOIN  ←→  Ξ ETHEREUM               (barrio cripto)
+
+  🛢 ECOPETROL  ←→  ⛽ PETRÓLEO             (barrio energía)</code></pre>
+<br>
+<p class="fragment">La IA <strong>sabe</strong> que "café" y "cacao" son vecinos,<br>pero "café" y "Bitcoin" viven lejos.</p>
+</section>
+
+<!-- SLIDE 7: PROBABILIDAD -->
+<section>
+<h2>🎲 La probabilidad detrás de la señal</h2>
+<br>
+<p>Cuando la IA dice "COMPRA Ecopetrol", no es magia:</p>
+<br>
+<div style="font-size:1.3em;text-align:center">
+<p><span class="pill pill-green">COMPRA → 72%</span> ← más probable</p>
+<p><span class="pill pill-gold">NEUTRAL → 20%</span></p>
+<p><span class="pill pill-red">VENTA → 8%</span></p>
+</div>
+<br>
+<p class="fragment">Basada en datos <span class="highlight">reales</span>: precio, volumen, indicadores técnicos.</p>
+</section>
+
+<!-- SLIDE 8: CHATBOT VS AGENTE -->
+<section>
+<h2>🤖 ChatGPT vs. un Agente de IA</h2>
+<br>
+<div class="grid-2">
+<div class="card">
+<h3>💬 ChatGPT</h3>
+<p>• Responde preguntas</p>
+<p>• Necesita que le preguntes</p>
+<p>• Solo texto</p>
+<p>• Una conversación</p>
+</div>
+<div class="card" style="border-color:#d4a017">
+<h3>⚡ Agente de IA</h3>
+<p>• <strong>Toma acciones</strong></p>
+<p>• <strong>Decide solo qué hacer</strong></p>
+<p>• <strong>Conecta APIs y mercados</strong></p>
+<p>• <strong>Un flujo completo automatizado</strong></p>
+</div>
+</div>
+</section>
+
+<!-- SLIDE 9: FLUJO PROSPECTA -->
+<section>
+<h2>⚙️ El cerebro de ProspecTA</h2>
+<br>
+<div style="text-align:center">
+<span class="flow-box">👆 Usuario toca botón</span>
+<span class="flow-arrow">→</span>
+<span class="flow-box">📊 Yahoo Finance</span>
+<br><br>
+<span class="flow-box">☁️ Ichimoku</span>
+<span class="flow-box">📈 Estocástico</span>
+<span class="flow-box">🏗 Wyckoff</span>
+<br><br>
+<span class="flow-arrow">↓</span>
+<br>
+<span class="flow-box" style="border-color:#d4a017">🧠 Gemini Flash interpreta</span>
+<span class="flow-arrow">→</span>
+<span class="flow-box" style="border-color:#2ecc71">📱 Señal + Dashboard</span>
+</div>
+<br>
+<p class="dim">El usuario toca UN botón. El agente hace TODO en 5 segundos.</p>
+</section>
+
+<!-- SLIDE 10: ICHIMOKU -->
+<section>
+<h2>☁️ Ichimoku — La Nube</h2>
+<br>
+<p>Imaginen una <span class="highlight">nube</span> en el gráfico de precios:</p>
+<br>
+<p><span class="green">▲ Precio ARRIBA de la nube → tendencia ALCISTA</span></p>
+<p><span class="red">▼ Precio ABAJO de la nube → tendencia BAJISTA</span></p>
+<p><span style="color:#f1c40f">● Precio DENTRO → sin tendencia clara</span></p>
+<br>
+<p class="dim">Creado por Goichi Hosoda, un periodista japonés, en 1930.</p>
+</section>
+
+<!-- SLIDE 11: ESTOCASTICO -->
+<section>
+<h2>📊 Estocástico — El Termómetro</h2>
+<br>
+<p>Escala de 0 a 100:</p>
+<br>
+<div style="font-size:1.2em">
+<p><span class="green">K &lt; 20 → SOBREVENTA</span> (puede subir pronto) 🟢</p>
+<p><span class="red">K &gt; 80 → SOBRECOMPRA</span> (puede bajar pronto) 🔴</p>
+<p><span style="color:#f1c40f">20-80 → zona neutral</span> 🟡</p>
+</div>
+<br>
+<p class="dim">Como un termómetro que mide la "temperatura" del precio.</p>
+</section>
+
+<!-- SLIDE 12: WYCKOFF -->
+<section>
+<h2>🏗 Wyckoff — Los Grandes Jugadores</h2>
+<br>
+<p>Las 4 fases del mercado:</p>
+<br>
+<p><span class="pill pill-green">ACUMULACIÓN</span> Los grandes compran callados</p>
+<p><span class="pill pill-green">MARKUP</span> El precio sube con fuerza 📈</p>
+<p><span class="pill pill-red">DISTRIBUCIÓN</span> Los grandes venden callados</p>
+<p><span class="pill pill-red">CAPITULACIÓN</span> Venta masiva con pánico 📉</p>
+<br>
+<p class="dim">Richard Wyckoff lo desarrolló observando a JP Morgan en los años 1930.</p>
+</section>
+
+<!-- SLIDE 13: DEMO EN VIVO -->
+<section class="center-v" data-background-color="#1a237e">
+<p class="emoji-big">📱</p>
+<h1 style="font-size:2.5em">Demo en Vivo</h1>
+<br>
+<p style="font-size:1.3em">Abran Telegram y busquen:</p>
+<p style="font-size:2em;color:#f1c40f;font-weight:800">@Prospecta_Cali_Bot</p>
+<br>
+<p class="fragment" style="font-size:1.1em">Toquen <code>/start</code> → Seleccionen un mercado</p>
+<p class="fragment dim">Esto que van a ver costó <span class="highlight">$0.001</span></p>
+</section>
+
+<!-- SLIDE 14: ECONOMIA (definiciones matemáticas) -->
+<section>
+<h2>💰 Economía de ProspecTA</h2>
+<br>
+<div style="font-size:0.8em;text-align:left;max-width:800px;margin:0 auto">
+<p><strong>Costo marginal por consulta:</strong></p>
+<pre style="text-align:center;font-size:1.1em;border:none;background:rgba(212,160,23,0.05)"><code>C(q) = tokens × P_token = 4,000 × $0.00000025 ≈ <span class="green">$0.001</span></code></pre>
+<p><strong>Costo fijo mensual:</strong></p>
+<pre style="text-align:center;font-size:1.1em;border:none;background:rgba(212,160,23,0.05)"><code>F = Servidor + API_base = $5 + $0 = <span class="highlight">$5/mes</span></code></pre>
+<p><strong>Break-even (punto de equilibrio):</strong></p>
+<pre style="text-align:center;font-size:1.1em;border:none;background:rgba(212,160,23,0.05)"><code>n* = F / (P - C) = $5 / ($9.99 - $0.09) ≈ <span class="highlight">1 suscriptor</span></code></pre>
+<p><strong>Margen con <em>n</em> suscriptores:</strong></p>
+<pre style="text-align:center;font-size:1.1em;border:none;background:rgba(212,160,23,0.05)"><code>π(n) = n·P − F − n·C(90)  →  π(10) ≈ <span class="green">$94/mes (94%)</span>  |  π(100) ≈ <span class="green">$985/mes</span></code></pre>
+</div>
+<p class="dim" style="margin-top:15px">Donde P = precio suscripción, C(q) = costo variable, F = costo fijo</p>
+</section>
+
+<!-- SLIDE 15: STACK -->
+<section>
+<h2>🛠 Stack Tecnológico</h2>
+<br>
+<div style="text-align:center">
+<span class="flow-box">🐍 Python</span>
+<span class="flow-arrow">+</span>
+<span class="flow-box">📱 Telegram Bot API</span>
+<br><br>
+<span class="flow-box">📊 yfinance <span class="dim">(gratis)</span></span>
+<span class="flow-arrow">+</span>
+<span class="flow-box">🐼 pandas <span class="dim">(cálculo)</span></span>
+<br><br>
+<span class="flow-box" style="border-color:#d4a017">🧠 Gemini Flash <span class="dim">($0.001)</span></span>
+<br><br>
+<span class="flow-box">🚂 Railway <span class="dim">($5/mes)</span></span>
+<span class="flow-arrow">+</span>
+<span class="flow-box">📈 Chart.js <span class="dim">(gráficas)</span></span>
+</div>
+<br>
+<p class="fragment dim">Se construyó en <span class="highlight">un fin de semana</span>. Eso es el poder de los agentes.</p>
+</section>
+
+<!-- SLIDE 16: POR QUE MICRO SAAS -->
+<section>
+<h2>🚀 ¿Por qué Micro-SaaS?</h2>
+<br>
+<div class="grid-2">
+<div class="card">
+<h3>Hace 5 años</h3>
+<p>• Equipo de 10 personas</p>
+<p>• $50,000 de inversión</p>
+<p>• 6 meses de desarrollo</p>
+</div>
+<div class="card" style="border-color:#2ecc71">
+<h3 style="color:#2ecc71">Hoy</h3>
+<p>• <strong>1 desarrollador</strong></p>
+<p>• <strong>$5 de servidor</strong></p>
+<p>• <strong>1 fin de semana</strong></p>
+</div>
+</div>
+<br>
+<p class="fragment highlight" style="font-size:1.2em;text-align:center">Las barreras de entrada desaparecieron.</p>
+</section>
+
+<!-- SLIDE 17: FUTURO -->
+<section>
+<h2>🔮 El futuro: Agentes para todo</h2>
+<br>
+<p>🏥 Agente de diagnóstico médico preliminar</p>
+<p>📚 Agente tutor personalizado</p>
+<p>🌾 Agente de monitoreo agrícola — <em>café del Valle</em></p>
+<p>🏛 Agente de análisis de licitaciones públicas</p>
+<p>🎵 Agente de tendencias culturales — <em>salsa caleña + datos</em></p>
+<br>
+<p class="fragment" style="font-size:1.1em">Cada uno puede ser un negocio de <span class="highlight">$1,000/mes</span><br>con un solo desarrollador.</p>
+</section>
+
+<!-- SLIDE 18: CIERRE -->
+<section class="center-v">
+<p class="big-quote">"Cali es Cali y lo demás es <span>loma</span>."</p>
+<br>
+<p class="fragment" style="font-size:1.3em">Pero con agentes de IA,<br>las lomas se vuelven <span class="highlight">oportunidades</span>.</p>
+<br>
+<div class="fragment">
+<p style="font-size:1.1em">📱 <code>@Prospecta_Cali_Bot</code></p>
+<p style="font-size:0.9em">3 análisis gratis. Conquisten sus lomas.</p>
+<br>
+<p class="dim">Ana Lorena Jiménez Preciado — ana.jzp@gmail.com<br>github.com/AnaJZP/prospecta-bot</p>
+</div>
+</section>
+
+</div><!-- /slides -->
+</div><!-- /reveal -->
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+<script>
+Reveal.initialize({
+  hash: true,
+  transition: 'slide',
+  transitionSpeed: 'default',
+  backgroundTransition: 'fade',
+  center: true,
+  progress: true,
+  controls: true,
+  controlsTutorial: false,
+});
+</script>
+</body>
+</html>
