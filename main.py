@@ -395,54 +395,41 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
     query = update.callback_query
     data = query.data
     chat_id = query.message.chat_id
+    logger.info("Callback recibido: data=%s chat_id=%s user=%s", data, chat_id, query.from_user.id)
 
-    # Responder callback inmediatamente para evitar "loading" infinito
+    # Responder callback inmediatamente para quitar el "relojito"
     try:
         await query.answer()
     except Exception as e:
         logger.warning("Error answering callback: %s", e)
 
-    async def _safe_edit(text, markup=None):
-        """Editar el mensaje actual, sin parse_mode para evitar fallos."""
+    async def _send_new(text, markup=None):
+        """Siempre enviar mensaje nuevo (evita fallos de edit_message_text)."""
         try:
-            await query.edit_message_text(text, reply_markup=markup)
+            await ctx.bot.send_message(chat_id=chat_id, text=text, reply_markup=markup)
         except Exception as e:
-            logger.warning("edit_message_text fallo: %s", e)
-            try:
-                await ctx.bot.send_message(chat_id=chat_id, text=text, reply_markup=markup)
-            except Exception as e2:
-                logger.error("send_message tambien fallo: %s", e2)
-
-    async def _safe_send(text, markup=None, parse_mode=None):
-        """Enviar mensaje nuevo con fallback sin parse_mode."""
-        try:
-            await ctx.bot.send_message(chat_id=chat_id, text=text,
-                                       reply_markup=markup, parse_mode=parse_mode)
-        except Exception as e:
-            logger.warning("send con parse_mode=%s fallo: %s — reintentando sin formato", parse_mode, e)
-            try:
-                # Quitar asteriscos/underscores y reintentar sin parse_mode
-                clean = text.replace("*", "").replace("_", "")
-                await ctx.bot.send_message(chat_id=chat_id, text=clean, reply_markup=markup)
-            except Exception as e2:
-                logger.error("send sin formato tambien fallo: %s", e2)
+            logger.error("send_message fallo: %s", e)
 
     # Navegacion de sub-menus
     if data == "back":
-        await _safe_edit("Selecciona un mercado:", markup=main_menu_keyboard())
+        await _send_new("Selecciona un mercado:", markup=main_menu_keyboard())
         return
     if data == "sub_us":
-        await _safe_edit("🇺🇸 EE.UU. — Selecciona un sector:", markup=us_submenu())
+        await _send_new("🇺🇸 EE.UU. — Selecciona un sector:", markup=us_submenu())
         return
     if data == "sub_crypto":
-        await _safe_edit("₿ Cripto — Selecciona una categoria:", markup=crypto_submenu())
+        await _send_new("₿ Cripto — Selecciona una categoria:", markup=crypto_submenu())
         return
     if data == "subscribe":
         await send_subscription_invoice(chat_id, ctx)
         return
     if data == "learn":
-        await _safe_send(LEARN_TEXT, parse_mode="Markdown")
-        await _safe_send("Analizar un mercado:", markup=main_menu_keyboard())
+        try:
+            await ctx.bot.send_message(chat_id=chat_id, text=LEARN_TEXT, parse_mode="Markdown")
+        except Exception:
+            await ctx.bot.send_message(chat_id=chat_id,
+                text=LEARN_TEXT.replace("*", "").replace("_", ""))
+        await _send_new("Analizar un mercado:", markup=main_menu_keyboard())
         return
 
     if not data.startswith("mkt_"):
@@ -450,12 +437,13 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
 
     market_key = data.replace("mkt_", "")
     if market_key not in MARKETS:
+        logger.warning("Market key no encontrado: %s", market_key)
         return
 
     uid = query.from_user.id
     allowed, msg = check_usage(uid)
     if not allowed:
-        await _safe_send(
+        await _send_new(
             f"🚫 Limite alcanzado\n\n"
             f"Has usado tus {FREE_MONTHLY_LIMIT} analisis gratis este mes.\n\n"
             f"💎 Plan PRO — {STARS_PRICE} Stars (~${SUB_PRICE})\n"
@@ -470,29 +458,31 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
         return
 
     mkt = MARKETS[market_key]
+    logger.info("Iniciando analisis de mercado: %s", market_key)
 
-    # Enviar mensaje de "analizando" como mensaje nuevo (no editar)
-    wait_msg = await ctx.bot.send_message(
-        chat_id=chat_id,
-        text=f"⏳ Analizando {mkt['flag']} {mkt['name']}...\n"
-             "Calculando Ichimoku, Estocastico y Wyckoff...\n"
-             "Esto puede tardar unos segundos."
+    # Enviar mensaje de "analizando"
+    await _send_new(
+        f"⏳ Analizando {mkt['flag']} {mkt['name']}...\n"
+        "Calculando Ichimoku, Estocastico y Wyckoff...\n"
+        "Esto puede tardar unos segundos."
     )
 
     try:
         results = await asyncio.to_thread(analyze_market, market_key)
     except Exception as e:
         logger.error("Error en analyze_market: %s", e, exc_info=True)
-        await _safe_send("❌ Error al obtener datos del mercado. Intente mas tarde.",
-                         markup=main_menu_keyboard())
+        await _send_new("❌ Error al obtener datos del mercado. Intente mas tarde.",
+                        markup=main_menu_keyboard())
         return
 
     if not results:
-        await _safe_send("No se pudieron obtener datos. Intente mas tarde.",
-                         markup=main_menu_keyboard())
+        await _send_new("No se pudieron obtener datos. Intente mas tarde.",
+                        markup=main_menu_keyboard())
         return
 
-    # Resumen en Telegram — usar texto plano para evitar errores de formato
+    logger.info("Analisis completado: %d activos", len(results))
+
+    # Resumen en Telegram — texto plano, sin parse_mode
     lines = [f"📊 {mkt['flag']} {mkt['name']} — Senales\n"]
     for r in results:
         emoji = {"COMPRA": "🟢", "VENTA": "🔴"}.get(r["signal"], "🟡")
@@ -503,7 +493,7 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
     usage = get_usage_text(uid)
     lines.append(f"\n{usage}\nGenerando dashboard con IA...")
 
-    await _safe_send("\n".join(lines))
+    await _send_new("\n".join(lines))
 
     try:
         commentary = await get_ai_commentary(results, mkt["name"])
@@ -515,9 +505,9 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
         html_path.unlink(missing_ok=True)
     except Exception as e:
         logger.error("Error dashboard: %s", e, exc_info=True)
-        await _safe_send("⚠️ Dashboard no disponible, pero las senales arriba son validas.")
+        await _send_new("⚠️ Dashboard no disponible, pero las senales arriba son validas.")
 
-    await _safe_send("Analizar otro mercado:", markup=main_menu_keyboard())
+    await _send_new("Analizar otro mercado:", markup=main_menu_keyboard())
 
 
 async def handle_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
