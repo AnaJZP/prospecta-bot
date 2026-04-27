@@ -388,28 +388,33 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
     await query.answer()
     data = query.data
 
+    chat_id = query.message.chat_id
+
+    async def _reply(text, markup=None, pm=None):
+        try:
+            await query.edit_message_text(text, reply_markup=markup, parse_mode=pm)
+        except Exception:
+            await ctx.bot.send_message(chat_id=chat_id, text=text, reply_markup=markup, parse_mode=pm)
+
     # Navegacion de sub-menus
     if data == "back":
-        await query.edit_message_text("Selecciona un mercado:",
-            reply_markup=main_menu_keyboard())
+        await _reply("Selecciona un mercado:", markup=main_menu_keyboard())
         return
     if data == "sub_us":
-        await query.edit_message_text(
-            "🇺🇸 *EE.UU.* — Selecciona un sector:",
-            reply_markup=us_submenu(), parse_mode="Markdown")
+        await _reply("🇺🇸 *EE.UU.* \u2014 Selecciona un sector:",
+                     markup=us_submenu(), pm="Markdown")
         return
     if data == "sub_crypto":
-        await query.edit_message_text(
-            "₿ *Cripto* — Selecciona una categoria:",
-            reply_markup=crypto_submenu(), parse_mode="Markdown")
+        await _reply("\u20bf *Cripto* \u2014 Selecciona una categoria:",
+                     markup=crypto_submenu(), pm="Markdown")
         return
     if data == "subscribe":
-        await send_subscription_invoice(query.message.chat_id, ctx)
+        await send_subscription_invoice(chat_id, ctx)
         return
     if data == "learn":
-        await ctx.bot.send_message(chat_id=query.message.chat_id,
+        await ctx.bot.send_message(chat_id=chat_id,
             text=LEARN_TEXT, parse_mode="Markdown")
-        await ctx.bot.send_message(chat_id=query.message.chat_id,
+        await ctx.bot.send_message(chat_id=chat_id,
             text="Analizar un mercado:", reply_markup=main_menu_keyboard())
         return
 
@@ -442,13 +447,12 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
         return
 
     mkt = MARKETS[market_key]
-    await query.edit_message_text(
-        f"⏳ Analizando {mkt['flag']} {mkt['name']}...\n"
-        "Calculando Ichimoku, Estocastico y Wyckoff...")
+    await _reply(f"\u23f3 Analizando {mkt['flag']} {mkt['name']}...\n"
+                 "Calculando Ichimoku, Estocastico y Wyckoff...")
 
     results = await asyncio.to_thread(analyze_market, market_key)
     if not results:
-        await ctx.bot.send_message(chat_id=query.message.chat_id,
+        await ctx.bot.send_message(chat_id=chat_id,
             text="No se pudieron obtener datos. Intente mas tarde.",
             reply_markup=main_menu_keyboard())
         return
@@ -464,13 +468,13 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
     usage = get_usage_text(uid)
     lines.append(f"_{usage}_\n_Generando dashboard..._")
 
-    await ctx.bot.send_message(chat_id=query.message.chat_id,
+    await ctx.bot.send_message(chat_id=chat_id,
         text="\n".join(lines), parse_mode="Markdown")
 
     try:
         commentary = await get_ai_commentary(results, mkt["name"])
         html_path = generate_dashboard(results, mkt, commentary)
-        await ctx.bot.send_document(chat_id=query.message.chat_id,
+        await ctx.bot.send_document(chat_id=chat_id,
             document=html_path.open("rb"),
             filename=f"ProspecTA_{market_key}_{datetime.now():%Y%m%d_%H%M}.html",
             caption="Abra en su navegador para ver graficas interactivas.")
@@ -478,7 +482,7 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
     except Exception as e:
         logger.error("Error dashboard: %s", e, exc_info=True)
 
-    await ctx.bot.send_message(chat_id=query.message.chat_id,
+    await ctx.bot.send_message(chat_id=chat_id,
         text="Analizar otro mercado:", reply_markup=main_menu_keyboard())
 
 
