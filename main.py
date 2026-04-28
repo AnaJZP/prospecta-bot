@@ -16,7 +16,6 @@ import yfinance as yf
 import pandas as pd
 from google import genai
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, LabeledPrice
-from telegram.request import HTTPXRequest
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
     MessageHandler, PreCheckoutQueryHandler, ContextTypes, filters,
@@ -632,23 +631,7 @@ async def cmd_status(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
 
 def main() -> None:
     logger.info("Iniciando ProspecTA")
-    # Timeouts largos para Railway (red lenta)
-    request = HTTPXRequest(
-        connect_timeout=30.0,
-        read_timeout=60.0,
-        write_timeout=60.0,
-        pool_timeout=30.0,
-        connection_pool_size=16,
-    )
-    app = (
-        Application.builder()
-        .token(TELEGRAM_TOKEN)
-        .request(request)
-        .connect_timeout(30.0)
-        .read_timeout(60.0)
-        .write_timeout(60.0)
-        .build()
-    )
+    app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("reset", cmd_reset))
     app.add_handler(CommandHandler("status", cmd_status))
@@ -658,8 +641,7 @@ def main() -> None:
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     logger.info("Bot listo.")
     app.run_polling(allowed_updates=Update.ALL_TYPES,
-                    drop_pending_updates=True,
-                    poll_interval=1.0)
+                    drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
