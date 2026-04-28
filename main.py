@@ -31,7 +31,7 @@ FLASH_MODEL = os.environ.get("FLASH_MODEL", "gemini-2.5-flash")
 TEMPLATE_PATH = Path(__file__).parent / "dashboard_template.html"
 gemini = genai.Client(api_key=API_KEY)
 
-FREE_MONTHLY_LIMIT = 3
+FREE_MONTHLY_LIMIT = 50  # Generoso para demo en Cali
 SUB_DAILY_LIMIT = 3
 SUB_PRICE = 9.99
 STARS_PRICE = 250  # ~$9.99 en Telegram Stars
@@ -51,7 +51,7 @@ def reset_user(user_id: int) -> None:
 
 
 def check_usage(user_id: int) -> tuple[bool, str]:
-    """Verifica si el usuario puede hacer una consulta."""
+    """Verifica si el usuario puede hacer una consulta (NO incrementa)."""
     today = date.today().isoformat()
     month = today[:7]
 
@@ -73,16 +73,25 @@ def check_usage(user_id: int) -> tuple[bool, str]:
     # Suscriptor PRO
     if u.get("sub"):
         if u["daily"] >= SUB_DAILY_LIMIT:
-            return False, f"\u23f3 Limite diario alcanzado ({SUB_DAILY_LIMIT}/dia). Vuelve manana."
-        u["daily"] += 1
+            return False, "Limite diario alcanzado."
         return True, ""
 
     # Plan gratuito
     if u["free"] < FREE_MONTHLY_LIMIT:
-        u["free"] += 1
         return True, ""
 
     return False, ""
+
+
+def record_usage(user_id: int) -> None:
+    """Incrementa el contador SOLO tras analisis exitoso."""
+    u = user_usage.get(user_id)
+    if not u:
+        return
+    if u.get("sub"):
+        u["daily"] += 1
+    else:
+        u["free"] += 1
 
 
 def get_usage_text(user_id: int) -> str:
@@ -507,6 +516,7 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
             return
 
         logger.info("Analisis completado: %d activos", len(results))
+        record_usage(uid)  # Solo cuenta si el analisis funciono
 
         # Resumen en Telegram
         lines = [f"\U0001f4ca {mkt['flag']} {mkt['name']} \u2014 Senales\n"]
