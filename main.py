@@ -410,7 +410,8 @@ async def _send(bot, chat_id, text, reply_markup=None, retries=3):
     for attempt in range(retries):
         try:
             return await bot.send_message(chat_id=chat_id, text=text,
-                                          reply_markup=reply_markup)
+                                          reply_markup=reply_markup,
+                                          read_timeout=30, write_timeout=30, connect_timeout=30)
         except Exception as e:
             if attempt < retries - 1:
                 logger.warning("send_message intento %d fallo: %s", attempt + 1, e)
@@ -545,7 +546,8 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
                     await ctx.bot.send_document(chat_id=chat_id,
                         document=html_path.open("rb"),
                         filename=f"ProspecTA_{market_key}_{datetime.now():%Y%m%d_%H%M}.html",
-                        caption="Abra en su navegador para ver graficas interactivas.")
+                        caption="Abra en su navegador para ver graficas interactivas.",
+                        read_timeout=60, write_timeout=60, connect_timeout=60)
                     break
                 except Exception:
                     if attempt < 2:
@@ -560,10 +562,10 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
                     reply_markup=main_menu_keyboard())
 
     except Exception as e:
-        logger.error("Error CRITICO en button_handler: %s", e, exc_info=True)
+        logger.error("Error CRITICO en button_handler: %s", traceback.format_exc())
         try:
             await _send(ctx.bot, chat_id,
-                f"\u274c Error inesperado: {type(e).__name__}. Intente /start de nuevo.",
+                f"\u274c Error inesperado: {type(e).__name__} - {str(e)[:50]}.\nIntente /start de nuevo.",
                 reply_markup=main_menu_keyboard())
         except Exception:
             pass
@@ -662,7 +664,13 @@ async def cmd_status(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
 
 def main() -> None:
     logger.info("Iniciando ProspecTA")
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
+    app = (Application.builder()
+           .token(TELEGRAM_TOKEN)
+           .read_timeout(30)
+           .write_timeout(30)
+           .connect_timeout(30)
+           .pool_timeout(30)
+           .build())
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("reset", cmd_reset))
     app.add_handler(CommandHandler("status", cmd_status))
