@@ -31,7 +31,7 @@ FLASH_MODEL = os.environ.get("FLASH_MODEL", "gemini-2.5-flash")
 TEMPLATE_PATH = Path(__file__).parent / "dashboard_template.html"
 gemini = genai.Client(api_key=API_KEY)
 
-FREE_MONTHLY_LIMIT = 50  # Generoso para demo en Cali
+FREE_MONTHLY_LIMIT = 3  # 3 gratis, luego cobra
 SUB_DAILY_LIMIT = 3
 SUB_PRICE = 9.99
 STARS_PRICE = 250  # ~$9.99 en Telegram Stars
@@ -109,7 +109,7 @@ MARKETS = {
     # --- Colombia (ADRs en NYSE) ---
     "col": {"name": "Colombia", "flag": "\ud83c\udde8\ud83c\uddf4", "assets": {
         "EC": "Ecopetrol", "CIB": "Bancolombia", "AVAL": "Grupo Aval",
-        "CRESUD": "Cresud (Agro)", "BHP": "BHP (Minera)",
+        "ICE": "Interconexion Electrica", "BHP": "BHP (Minera)",
     }},
     # --- EE.UU. por sector ---
     "us_tech": {"name": "EE.UU. Tech", "flag": "\ud83c\uddfa\ud83c\uddf8\ud83d\udcbb", "assets": {
@@ -139,7 +139,7 @@ MARKETS = {
     }},
     "crypto_alt": {"name": "Cripto Alt", "flag": "\ud83e\udea8", "assets": {
         "ADA-USD": "Cardano", "AVAX-USD": "Avalanche", "DOT-USD": "Polkadot",
-        "LINK-USD": "Chainlink", "MATIC-USD": "Polygon",
+        "LINK-USD": "Chainlink", "DOGE-USD": "Dogecoin",
     }},
 }
 
@@ -318,11 +318,14 @@ def generate_dashboard(results: list[dict], market: dict, commentary: str) -> Pa
 # ---------------------------------------------------------------------------
 def main_menu_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("₿ Cripto Top 5", callback_data="mkt_crypto_top")],
-        [InlineKeyboardButton("🇨🇴 Colombia", callback_data="mkt_col"),
-         InlineKeyboardButton("🪨 Altcoins", callback_data="mkt_crypto_alt")],
+        [InlineKeyboardButton("🇨🇴 Colombia", callback_data="mkt_col")],
         [InlineKeyboardButton("🇺🇸 Tech", callback_data="mkt_us_tech"),
          InlineKeyboardButton("🇺🇸 Finanzas", callback_data="mkt_us_finance")],
+        [InlineKeyboardButton("🇺🇸 Salud", callback_data="mkt_us_health"),
+         InlineKeyboardButton("🇺🇸 Energia", callback_data="mkt_us_energy")],
+        [InlineKeyboardButton("🇺🇸 Consumo", callback_data="mkt_us_consumer")],
+        [InlineKeyboardButton("₿ Cripto Top 5", callback_data="mkt_crypto_top"),
+         InlineKeyboardButton("🪨 Altcoins", callback_data="mkt_crypto_alt")],
         [InlineKeyboardButton("📚 Como leer las senales", callback_data="learn")],
     ])
 
@@ -355,7 +358,7 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         "\u2022 Wyckoff \u00b7 Ichimoku \u00b7 Estocastico\n"
         "\u2022 Precio objetivo y Stop Loss\n"
         "\u2022 Nivel de confiabilidad por senal\n\n"
-        f"\U0001f381 *{FREE_MONTHLY_LIMIT} analisis gratis al mes*\n"
+        f"\U0001f381 *{FREE_MONTHLY_LIMIT} analisis gratis*\n"
         f"\U0001f48e Plan PRO: ${SUB_PRICE}/mes \u2014 3 consultas diarias\n\n"
         f"_{usage}_\n\n"
         "Selecciona un mercado:",
@@ -469,7 +472,7 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
     if not allowed:
         await _send(ctx.bot, chat_id,
             f"\U0001f6ab Limite alcanzado\n\n"
-            f"Has usado tus {FREE_MONTHLY_LIMIT} analisis gratis este mes.\n\n"
+            f"Has usado tus {FREE_MONTHLY_LIMIT} analisis gratis.\n\n"
             f"\U0001f48e Plan PRO \u2014 {STARS_PRICE} Stars (~${SUB_PRICE})\n"
             "\u2022 3 consultas diarias\n"
             "\u2022 Todos los mercados\n"
