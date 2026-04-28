@@ -107,37 +107,37 @@ def get_usage_text(user_id: int) -> str:
 # ---------------------------------------------------------------------------
 MARKETS = {
     # --- Colombia (ADRs en NYSE) ---
-    "col": {"name": "Colombia", "flag": "\ud83c\udde8\ud83c\uddf4", "assets": {
+    "col": {"name": "Colombia", "flag": "🇨🇴", "assets": {
         "EC": "Ecopetrol", "CIB": "Bancolombia", "AVAL": "Grupo Aval",
         "ICE": "Interconexion Electrica", "BHP": "BHP (Minera)",
     }},
     # --- EE.UU. por sector ---
-    "us_tech": {"name": "EE.UU. Tech", "flag": "\ud83c\uddfa\ud83c\uddf8\ud83d\udcbb", "assets": {
+    "us_tech": {"name": "EE.UU. Tech", "flag": "🇺🇸💻", "assets": {
         "AAPL": "Apple", "MSFT": "Microsoft", "NVDA": "Nvidia",
         "GOOGL": "Google", "META": "Meta", "AMZN": "Amazon",
     }},
-    "us_finance": {"name": "EE.UU. Finanzas", "flag": "\ud83c\uddfa\ud83c\uddf8\ud83c\udfe6", "assets": {
+    "us_finance": {"name": "EE.UU. Finanzas", "flag": "🇺🇸🏦", "assets": {
         "JPM": "JP Morgan", "BAC": "Bank of America", "GS": "Goldman Sachs",
         "V": "Visa", "MA": "Mastercard", "BLK": "BlackRock",
     }},
-    "us_health": {"name": "EE.UU. Salud", "flag": "\ud83c\uddfa\ud83c\uddf8\ud83d\udc8a", "assets": {
+    "us_health": {"name": "EE.UU. Salud", "flag": "🇺🇸💊", "assets": {
         "JNJ": "Johnson & Johnson", "UNH": "UnitedHealth", "PFE": "Pfizer",
         "LLY": "Eli Lilly", "ABBV": "AbbVie", "MRK": "Merck",
     }},
-    "us_energy": {"name": "EE.UU. Energia", "flag": "\ud83c\uddfa\ud83c\uddf8\u26a1", "assets": {
+    "us_energy": {"name": "EE.UU. Energia", "flag": "🇺🇸⚡", "assets": {
         "XOM": "Exxon Mobil", "CVX": "Chevron", "COP": "ConocoPhillips",
         "TSLA": "Tesla", "NEE": "NextEra Energy", "ENPH": "Enphase",
     }},
-    "us_consumer": {"name": "EE.UU. Consumo", "flag": "\ud83c\uddfa\ud83c\uddf8\ud83d\udecd\ufe0f", "assets": {
+    "us_consumer": {"name": "EE.UU. Consumo", "flag": "🇺🇸🛍️", "assets": {
         "WMT": "Walmart", "KO": "Coca-Cola", "MCD": "McDonald's",
         "NKE": "Nike", "DIS": "Disney", "PEP": "PepsiCo",
     }},
     # --- Cripto ---
-    "crypto_top": {"name": "Cripto Top", "flag": "\u20bf", "assets": {
+    "crypto_top": {"name": "Cripto Top", "flag": "₿", "assets": {
         "BTC-USD": "Bitcoin", "ETH-USD": "Ethereum", "SOL-USD": "Solana",
         "BNB-USD": "BNB", "XRP-USD": "XRP",
     }},
-    "crypto_alt": {"name": "Cripto Alt", "flag": "\ud83e\udea8", "assets": {
+    "crypto_alt": {"name": "Cripto Alt", "flag": "🪨", "assets": {
         "ADA-USD": "Cardano", "AVAX-USD": "Avalanche", "DOT-USD": "Polkadot",
         "LINK-USD": "Chainlink", "DOGE-USD": "Dogecoin",
     }},
