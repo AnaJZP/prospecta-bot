@@ -16,6 +16,7 @@ import yfinance as yf
 import pandas as pd
 from google import genai
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, LabeledPrice
+from telegram.request import HTTPXRequest
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
     MessageHandler, PreCheckoutQueryHandler, ContextTypes, filters,
@@ -631,7 +632,23 @@ async def cmd_status(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
 
 def main() -> None:
     logger.info("Iniciando ProspecTA")
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
+    # Timeouts largos para Railway (red lenta)
+    request = HTTPXRequest(
+        connect_timeout=30.0,
+        read_timeout=60.0,
+        write_timeout=60.0,
+        pool_timeout=30.0,
+        connection_pool_size=16,
+    )
+    app = (
+        Application.builder()
+        .token(TELEGRAM_TOKEN)
+        .request(request)
+        .connect_timeout(30.0)
+        .read_timeout(60.0)
+        .write_timeout(60.0)
+        .build()
+    )
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("reset", cmd_reset))
     app.add_handler(CommandHandler("status", cmd_status))
