@@ -623,11 +623,14 @@ async def successful_payment_handler(update: Update, ctx: ContextTypes.DEFAULT_T
 
 async def cmd_reset(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     """Reinicia los intentos del usuario que envia el comando."""
+    if not ctx.args or ctx.args[0] != "cali2026":
+        return  # Ignorar silenciosamente si no tienen la clave
+    
     uid = update.effective_user.id
     reset_user(uid)
     usage = get_usage_text(uid)
     await update.message.reply_text(
-        "✅ Tus intentos han sido reiniciados.\n\n"
+        "✅ Tus intentos han sido reiniciados (Modo Admin).\n\n"
         f"{usage}\n\n"
         "Selecciona un mercado:",
         reply_markup=main_menu_keyboard(),
