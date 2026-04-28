@@ -391,6 +391,21 @@ LEARN_TEXT = (
 )
 
 
+async def _send(bot, chat_id, text, reply_markup=None, retries=3):
+    """Enviar mensaje con reintentos para NetworkError de Railway."""
+    for attempt in range(retries):
+        try:
+            return await bot.send_message(chat_id=chat_id, text=text,
+                                          reply_markup=reply_markup)
+        except Exception as e:
+            if attempt < retries - 1:
+                logger.warning("send_message intento %d fallo: %s", attempt + 1, e)
+                await asyncio.sleep(2)
+            else:
+                logger.error("send_message fallo tras %d intentos: %s", retries, e)
+                raise
+
+
 async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     data = query.data
@@ -405,17 +420,17 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
 
     # Navegacion de sub-menus
     if data == "back":
-        await ctx.bot.send_message(chat_id=chat_id, text="Selecciona un mercado:",
-                                   reply_markup=main_menu_keyboard())
+        await _send(ctx.bot, chat_id, "Selecciona un mercado:",
+                    reply_markup=main_menu_keyboard())
         return
     if data == "sub_us":
-        await ctx.bot.send_message(chat_id=chat_id,
-            text="\U0001f1fa\U0001f1f8 EE.UU. \u2014 Selecciona un sector:",
+        await _send(ctx.bot, chat_id,
+            "\U0001f1fa\U0001f1f8 EE.UU. \u2014 Selecciona un sector:",
             reply_markup=us_submenu())
         return
     if data == "sub_crypto":
-        await ctx.bot.send_message(chat_id=chat_id,
-            text="\u20bf Cripto \u2014 Selecciona una categoria:",
+        await _send(ctx.bot, chat_id,
+            "\u20bf Cripto \u2014 Selecciona una categoria:",
             reply_markup=crypto_submenu())
         return
     if data == "subscribe":
@@ -423,12 +438,11 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
         return
     if data == "learn":
         try:
-            await ctx.bot.send_message(chat_id=chat_id, text=LEARN_TEXT, parse_mode="Markdown")
+            await _send(ctx.bot, chat_id, LEARN_TEXT)
         except Exception:
-            await ctx.bot.send_message(chat_id=chat_id,
-                text=LEARN_TEXT.replace("*", "").replace("_", ""))
-        await ctx.bot.send_message(chat_id=chat_id, text="Analizar un mercado:",
-                                   reply_markup=main_menu_keyboard())
+            pass
+        await _send(ctx.bot, chat_id, "Analizar un mercado:",
+                    reply_markup=main_menu_keyboard())
         return
 
     if not data.startswith("mkt_"):
@@ -442,16 +456,13 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
     uid = query.from_user.id
     allowed, msg = check_usage(uid)
     if not allowed:
-        await ctx.bot.send_message(
-            chat_id=chat_id,
-            text=(
-                f"\U0001f6ab Limite alcanzado\n\n"
-                f"Has usado tus {FREE_MONTHLY_LIMIT} analisis gratis este mes.\n\n"
-                f"\U0001f48e Plan PRO \u2014 {STARS_PRICE} Stars (~${SUB_PRICE})\n"
-                "\u2022 3 consultas diarias\n"
-                "\u2022 Todos los mercados\n"
-                "\u2022 Dashboard con IA"
-            ),
+        await _send(ctx.bot, chat_id,
+            f"\U0001f6ab Limite alcanzado\n\n"
+            f"Has usado tus {FREE_MONTHLY_LIMIT} analisis gratis este mes.\n\n"
+            f"\U0001f48e Plan PRO \u2014 {STARS_PRICE} Stars (~${SUB_PRICE})\n"
+            "\u2022 3 consultas diarias\n"
+            "\u2022 Todos los mercados\n"
+            "\u2022 Dashboard con IA",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("\U0001f48e Suscribirse PRO", callback_data="subscribe")],
                 [InlineKeyboardButton("\u25c0\ufe0f Volver", callback_data="back")],
@@ -464,11 +475,10 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
 
     try:
         # Mensaje de espera
-        await ctx.bot.send_message(
-            chat_id=chat_id,
-            text=f"\u23f3 Analizando {mkt['flag']} {mkt['name']}...\n"
-                 "Calculando Ichimoku, Estocastico y Wyckoff...\n"
-                 "Esto puede tardar 10-30 segundos."
+        await _send(ctx.bot, chat_id,
+            f"\u23f3 Analizando {mkt['flag']} {mkt['name']}...\n"
+            "Calculando Ichimoku, Estocastico y Wyckoff...\n"
+            "Esto puede tardar 10-30 segundos."
         )
 
         # Analisis con timeout de 90 segundos
@@ -479,26 +489,26 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
             )
         except asyncio.TimeoutError:
             logger.error("Timeout analizando mercado %s", market_key)
-            await ctx.bot.send_message(chat_id=chat_id,
-                text="\u23f0 El analisis tardo demasiado. Intente de nuevo.",
+            await _send(ctx.bot, chat_id,
+                "\u23f0 El analisis tardo demasiado. Intente de nuevo.",
                 reply_markup=main_menu_keyboard())
             return
         except Exception as e:
             logger.error("Error en analyze_market: %s", e, exc_info=True)
-            await ctx.bot.send_message(chat_id=chat_id,
-                text=f"\u274c Error obteniendo datos: {type(e).__name__}",
+            await _send(ctx.bot, chat_id,
+                f"\u274c Error obteniendo datos: {type(e).__name__}",
                 reply_markup=main_menu_keyboard())
             return
 
         if not results:
-            await ctx.bot.send_message(chat_id=chat_id,
-                text="No se pudieron obtener datos. Intente mas tarde.",
+            await _send(ctx.bot, chat_id,
+                "No se pudieron obtener datos. Intente mas tarde.",
                 reply_markup=main_menu_keyboard())
             return
 
         logger.info("Analisis completado: %d activos", len(results))
 
-        # Resumen en Telegram — texto plano
+        # Resumen en Telegram
         lines = [f"\U0001f4ca {mkt['flag']} {mkt['name']} \u2014 Senales\n"]
         for r in results:
             emoji = {"COMPRA": "\U0001f7e2", "VENTA": "\U0001f534"}.get(r["signal"], "\U0001f7e1")
@@ -509,30 +519,36 @@ async def button_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
         usage = get_usage_text(uid)
         lines.append(f"\n{usage}\nGenerando dashboard con IA...")
 
-        await ctx.bot.send_message(chat_id=chat_id, text="\n".join(lines))
+        await _send(ctx.bot, chat_id, "\n".join(lines))
 
         # Dashboard
         try:
             commentary = await get_ai_commentary(results, mkt["name"])
             html_path = generate_dashboard(results, mkt, commentary)
-            await ctx.bot.send_document(chat_id=chat_id,
-                document=html_path.open("rb"),
-                filename=f"ProspecTA_{market_key}_{datetime.now():%Y%m%d_%H%M}.html",
-                caption="Abra en su navegador para ver graficas interactivas.")
+            for attempt in range(3):
+                try:
+                    await ctx.bot.send_document(chat_id=chat_id,
+                        document=html_path.open("rb"),
+                        filename=f"ProspecTA_{market_key}_{datetime.now():%Y%m%d_%H%M}.html",
+                        caption="Abra en su navegador para ver graficas interactivas.")
+                    break
+                except Exception:
+                    if attempt < 2:
+                        await asyncio.sleep(2)
             html_path.unlink(missing_ok=True)
         except Exception as e:
             logger.error("Error dashboard: %s", e, exc_info=True)
-            await ctx.bot.send_message(chat_id=chat_id,
-                text="\u26a0\ufe0f Dashboard no disponible, pero las senales arriba son validas.")
+            await _send(ctx.bot, chat_id,
+                "\u26a0\ufe0f Dashboard no disponible, pero las senales arriba son validas.")
 
-        await ctx.bot.send_message(chat_id=chat_id,
-            text="Analizar otro mercado:", reply_markup=main_menu_keyboard())
+        await _send(ctx.bot, chat_id, "Analizar otro mercado:",
+                    reply_markup=main_menu_keyboard())
 
     except Exception as e:
         logger.error("Error CRITICO en button_handler: %s", e, exc_info=True)
         try:
-            await ctx.bot.send_message(chat_id=chat_id,
-                text=f"\u274c Error inesperado: {type(e).__name__}. Intente /start de nuevo.",
+            await _send(ctx.bot, chat_id,
+                f"\u274c Error inesperado: {type(e).__name__}. Intente /start de nuevo.",
                 reply_markup=main_menu_keyboard())
         except Exception:
             pass
