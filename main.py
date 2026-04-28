@@ -37,9 +37,26 @@ SUB_PRICE = 9.99
 STARS_PRICE = 250  # ~$9.99 en Telegram Stars
 
 # ---------------------------------------------------------------------------
-# Control de uso (en memoria - en produccion usar BD)
+# Control de uso (BD en archivo JSON para no perder datos al reiniciar)
 # ---------------------------------------------------------------------------
-user_usage: dict[int, dict] = {}
+DB_FILE = Path(__file__).parent / "prospecta_db.json"
+
+def load_db() -> dict:
+    if DB_FILE.exists():
+        try:
+            data = json.loads(DB_FILE.read_text(encoding="utf-8"))
+            return {int(k): v for k, v in data.items()}
+        except Exception as e:
+            logger.error("Error leyendo BD: %s", e)
+    return {}
+
+def save_db() -> None:
+    try:
+        DB_FILE.write_text(json.dumps(user_usage, indent=2), encoding="utf-8")
+    except Exception as e:
+        logger.error("Error guardando BD: %s", e)
+
+user_usage: dict[int, dict] = load_db()
 
 
 def reset_user(user_id: int) -> None:
@@ -47,6 +64,7 @@ def reset_user(user_id: int) -> None:
     today = date.today().isoformat()
     user_usage[user_id] = {"month": today[:7], "free": 0, "sub": False,
                             "day": today, "daily": 0}
+    save_db()
     logger.info("Intentos reiniciados para usuario %s", user_id)
 
 
@@ -70,16 +88,31 @@ def check_usage(user_id: int) -> tuple[bool, str]:
         u["day"] = today
         u["daily"] = 0
 
-    # Suscriptor PRO
+    # Suscriptor PRO: verificar vigencia de 30 dias
+    if u.get("sub"):
+        sub_date_str = u.get("sub_date")
+        if sub_date_str:
+            sub_date = date.fromisoformat(sub_date_str)
+            days_passed = (date.today() - sub_date).days
+            if days_passed >= 30:
+                # Downgrade a plan gratuito
+                u["sub"] = False
+                u["sub_date"] = None
+                save_db()
+                logger.info("Suscripcion PRO vencida para %s", user_id)
+                
     if u.get("sub"):
         if u["daily"] >= SUB_DAILY_LIMIT:
             return False, "Limite diario alcanzado."
+        save_db()
         return True, ""
 
     # Plan gratuito
     if u["free"] < FREE_MONTHLY_LIMIT:
+        save_db()
         return True, ""
 
+    save_db()
     return False, ""
 
 
@@ -92,13 +125,20 @@ def record_usage(user_id: int) -> None:
         u["daily"] += 1
     else:
         u["free"] += 1
+    save_db()
 
 
 def get_usage_text(user_id: int) -> str:
     u = user_usage.get(user_id, {})
     free = u.get("free", 0)
     if u.get("sub"):
-        return f"Suscriptor PRO | {u.get('daily', 0)}/{SUB_DAILY_LIMIT} hoy"
+        txt = f"Suscriptor PRO | {u.get('daily', 0)}/{SUB_DAILY_LIMIT} hoy"
+        sub_date_str = u.get("sub_date")
+        if sub_date_str:
+            days_left = 30 - (date.today() - date.fromisoformat(sub_date_str)).days
+            if days_left <= 3:
+                txt += f"\n\u26a0\ufe0f *Atencion:* Tu suscripcion PRO vence en {days_left} dia(s)."
+        return txt
     return f"Plan gratuito: {free}/{FREE_MONTHLY_LIMIT} usados este mes"
 
 
@@ -607,14 +647,17 @@ async def successful_payment_handler(update: Update, ctx: ContextTypes.DEFAULT_T
     today = date.today().isoformat()
     if uid not in user_usage:
         user_usage[uid] = {"month": today[:7], "free": 0, "sub": True,
-                           "day": today, "daily": 0}
+                           "day": today, "daily": 0, "sub_date": today}
     else:
         user_usage[uid]["sub"] = True
         user_usage[uid]["daily"] = 0
+        user_usage[uid]["sub_date"] = today
+    
+    save_db()
     logger.info("Pago exitoso de usuario %s", uid)
     await update.message.reply_text(
         "\u2705 *Suscripcion PRO activada!*\n\n"
-        "Ya puedes hacer hasta 3 analisis diarios.\n"
+        "Ya puedes hacer hasta 3 analisis diarios por 30 dias.\n"
         "Selecciona un mercado:",
         reply_markup=main_menu_keyboard(),
         parse_mode="Markdown",
