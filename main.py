@@ -318,9 +318,11 @@ def generate_dashboard(results: list[dict], market: dict, commentary: str) -> Pa
 # ---------------------------------------------------------------------------
 def main_menu_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🇨🇴 Colombia", callback_data="mkt_col")],
-        [InlineKeyboardButton("🇺🇸 EE.UU.", callback_data="sub_us"),
-         InlineKeyboardButton("₿ Cripto", callback_data="sub_crypto")],
+        [InlineKeyboardButton("₿ Cripto Top 5", callback_data="mkt_crypto_top")],
+        [InlineKeyboardButton("🇨🇴 Colombia", callback_data="mkt_col"),
+         InlineKeyboardButton("🪨 Altcoins", callback_data="mkt_crypto_alt")],
+        [InlineKeyboardButton("🇺🇸 Tech", callback_data="mkt_us_tech"),
+         InlineKeyboardButton("🇺🇸 Finanzas", callback_data="mkt_us_finance")],
         [InlineKeyboardButton("📚 Como leer las senales", callback_data="learn")],
     ])
 
@@ -348,13 +350,13 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     uid = update.effective_user.id
     usage = get_usage_text(uid)
     await update.message.reply_text(
-        "📊 *ProspecTA*\n"
+        "\U0001f4ca *ProspecTA*\n"
         "_Senales de trading con IA y analisis tecnico real_\n\n"
-        "• Wyckoff · Ichimoku · Estocastico\n"
-        "• Precio objetivo y Stop Loss\n"
-        "• Nivel de confiabilidad por senal\n\n"
-        f"🎁 *3 analisis gratis al mes*\n"
-        f"💎 Plan PRO: ${SUB_PRICE}/mes — 3 consultas diarias\n\n"
+        "\u2022 Wyckoff \u00b7 Ichimoku \u00b7 Estocastico\n"
+        "\u2022 Precio objetivo y Stop Loss\n"
+        "\u2022 Nivel de confiabilidad por senal\n\n"
+        f"\U0001f381 *{FREE_MONTHLY_LIMIT} analisis gratis al mes*\n"
+        f"\U0001f48e Plan PRO: ${SUB_PRICE}/mes \u2014 3 consultas diarias\n\n"
         f"_{usage}_\n\n"
         "Selecciona un mercado:",
         reply_markup=main_menu_keyboard(),
